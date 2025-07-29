@@ -72,6 +72,9 @@
             <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="UI.showSection('rekap-brand')">
                 <i class="fas fa-tags mr-3"></i>Rekap per Brand
             </a>
+            <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="UI.showSection('rekap-lokasi')">
+                <i class="fas fa-map-marker-alt mr-3"></i>Rekap per Lokasi
+            </a>
             <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="UI.showSection('stok-hari-ini')">
                 <i class="fas fa-calendar-day mr-3"></i>Stok Tanggal Target
             </a>
@@ -142,6 +145,22 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">Brand</label>
                         <select id="brandFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                             <option value="">Semua Brand</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cari Produk</label>
+                        <div class="relative">
+                            <input type="text" id="searchProduct" placeholder="Ketik nama produk..." class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Lokasi</label>
+                        <select id="locationFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Semua Lokasi</option>
                         </select>
                     </div>
                 </div>
@@ -303,6 +322,44 @@
 
             <div id="brandSummary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- Brand cards will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Rekap per Lokasi Section -->
+        <div id="rekap-lokasi-section" class="section hidden">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">📍 Rekap per Lokasi</h2>
+                    <p class="text-gray-600 mt-1">Total <span id="totalLocationCount" class="font-semibold text-blue-600">0</span> lokasi ditemukan</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-500">Total Stok</div>
+                    <div class="text-lg font-bold text-green-600" id="totalLocationKg">0 kg</div>
+                </div>
+            </div>
+            
+            <!-- Location Statistics -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-blue-600" id="totalLocationItems">0</div>
+                    <div class="text-sm text-gray-600">Total Item</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-green-600" id="totalLocationWeight">0</div>
+                    <div class="text-sm text-gray-600">Total Kg</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-purple-600" id="avgProductsPerLocation">0</div>
+                    <div class="text-sm text-gray-600">Rata-rata Produk/Lokasi</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-orange-600" id="avgKgPerLocation">0</div>
+                    <div class="text-sm text-gray-600">Rata-rata Kg/Lokasi</div>
+                </div>
+            </div>
+
+            <div id="locationSummary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Location cards will be populated by JavaScript -->
             </div>
         </div>
 
@@ -478,15 +535,20 @@
             populateFilters() {
                 const products = [...new Set(this.stockData.map(row => row[1]).filter(item => item && item !== '-'))];
                 const brands = [...new Set(this.stockData.map(row => row[3]).filter(item => item && item !== '-'))];
+                const locations = [...new Set(this.stockData.map(row => row[8]).filter(item => item && item !== '-'))];
                 
                 const productFilter = document.getElementById('productFilter');
                 const brandFilter = document.getElementById('brandFilter');
+                const locationFilter = document.getElementById('locationFilter');
                 
                 productFilter.innerHTML = '<option value="">Semua Produk</option>' + 
                     products.map(p => `<option value="${p}">${p}</option>`).join('');
                 
                 brandFilter.innerHTML = '<option value="">Semua Brand</option>' + 
                     brands.map(b => `<option value="${b}">${b}</option>`).join('');
+                
+                locationFilter.innerHTML = '<option value="">Semua Lokasi</option>' + 
+                    locations.map(l => `<option value="${l}">${l}</option>`).join('');
             },
 
             populateTable() {
@@ -713,6 +775,96 @@
                             </div>
                         `;
                     }).join('');
+
+                // Location Summary
+                const locationSummary = {};
+                const locationItemCount = {};
+                this.filteredData.forEach(row => {
+                    const location = row[8] || 'Tidak Diketahui';
+                    const product = row[1];
+                    if (!locationSummary[location]) {
+                        locationSummary[location] = {};
+                        locationItemCount[location] = 0;
+                    }
+                    if (!locationSummary[location][product]) locationSummary[location][product] = 0;
+                    locationSummary[location][product] += parseInt(row[7]) || 0;
+                    locationItemCount[location]++;
+                });
+                
+                // Calculate location statistics
+                const totalLocations = Object.keys(locationSummary).length;
+                const totalLocationItems = Object.values(locationItemCount).reduce((sum, count) => sum + count, 0);
+                const totalLocationWeight = Object.values(locationSummary).reduce((sum, products) => 
+                    sum + Object.values(products).reduce((pSum, kg) => pSum + kg, 0), 0);
+                const avgProductsPerLocation = totalLocations > 0 ? Math.round(
+                    Object.values(locationSummary).reduce((sum, products) => sum + Object.keys(products).length, 0) / totalLocations
+                ) : 0;
+                const avgKgPerLocation = totalLocations > 0 ? Math.round(totalLocationWeight / totalLocations) : 0;
+                
+                // Update location statistics
+                document.getElementById('totalLocationCount').textContent = totalLocations;
+                document.getElementById('totalLocationKg').textContent = totalLocationWeight.toLocaleString() + ' kg';
+                document.getElementById('totalLocationItems').textContent = totalLocationItems.toLocaleString();
+                document.getElementById('totalLocationWeight').textContent = totalLocationWeight.toLocaleString();
+                document.getElementById('avgProductsPerLocation').textContent = avgProductsPerLocation;
+                document.getElementById('avgKgPerLocation').textContent = avgKgPerLocation;
+                
+                // Sort locations by total weight (descending)
+                const sortedLocations = Object.entries(locationSummary).sort((a, b) => {
+                    const totalA = Object.values(a[1]).reduce((sum, kg) => sum + kg, 0);
+                    const totalB = Object.values(b[1]).reduce((sum, kg) => sum + kg, 0);
+                    return totalB - totalA;
+                });
+                
+                document.getElementById('locationSummary').innerHTML = sortedLocations
+                    .map(([location, products], index) => {
+                        const total = Object.values(products).reduce((sum, kg) => sum + kg, 0);
+                        const productCount = Object.keys(products).length;
+                        const itemCount = locationItemCount[location];
+                        const avgPerProduct = productCount > 0 ? Math.round(total / productCount) : 0;
+                        
+                        return `
+                            <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
+                                <div class="flex justify-between items-start mb-4">
+                                    <h3 class="text-lg font-semibold text-gray-800">${location}</h3>
+                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">#${index + 1}</span>
+                                </div>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Total Item:</span>
+                                        <span class="font-medium text-blue-600">${itemCount}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Total Kg:</span>
+                                        <span class="font-medium text-green-600">${total.toLocaleString()} kg</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Jenis Produk:</span>
+                                        <span class="font-medium text-purple-600">${productCount}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Rata-rata/Produk:</span>
+                                        <span class="font-medium text-orange-600">${avgPerProduct} kg</span>
+                                    </div>
+                                    <div class="pt-2 border-t">
+                                        <div class="text-xs text-gray-500 mb-2">Top 3 Produk:</div>
+                                        ${Object.entries(products)
+                                            .sort((a, b) => b[1] - a[1])
+                                            .slice(0, 3)
+                                            .map(([product, kg]) => `
+                                                <div class="flex justify-between text-sm">
+                                                    <span class="text-gray-600 truncate mr-2">${product}</span>
+                                                    <span class="font-medium">${kg.toLocaleString()} kg</span>
+                                                </div>
+                                            `).join('')}
+                                    </div>
+                                    <div class="pt-2 border-t">
+                                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Aktif</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
             },
 
             applyFilters() {
@@ -720,8 +872,10 @@
                 const endDate = document.getElementById('endDate').value;
                 const product = document.getElementById('productFilter').value;
                 const brand = document.getElementById('brandFilter').value;
+                const location = document.getElementById('locationFilter').value;
+                const searchTerm = document.getElementById('searchProduct').value.toLowerCase();
                 
-                console.log('Filter applied:', { startDate, endDate, product, brand });
+                console.log('Filter applied:', { startDate, endDate, product, brand, location, searchTerm });
                 
                 this.filteredData = this.stockData.filter(row => {
                     let matchesDate = true;
@@ -742,8 +896,10 @@
                     
                     const matchesProduct = !product || row[1] === product;
                     const matchesBrand = !brand || row[3] === brand;
+                    const matchesLocation = !location || row[8] === location;
+                    const matchesSearch = !searchTerm || row[1].toLowerCase().includes(searchTerm);
                     
-                    return matchesDate && matchesProduct && matchesBrand;
+                    return matchesDate && matchesProduct && matchesBrand && matchesLocation && matchesSearch;
                 });
                 
                 console.log(`Filtered ${this.filteredData.length} items from ${this.stockData.length} total`);
@@ -790,6 +946,8 @@
                 document.getElementById('endDate').value = '';
                 document.getElementById('productFilter').value = '';
                 document.getElementById('brandFilter').value = '';
+                document.getElementById('locationFilter').value = '';
+                document.getElementById('searchProduct').value = '';
                 
                 this.filteredData = [...this.stockData];
                 this.currentPage = 1;
@@ -1187,9 +1345,21 @@
             Charts.init();
             DataManager.fetchData();
             
+            // Add real-time search functionality
+            const searchInput = document.getElementById('searchProduct');
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    // Debounce search to avoid too many calls
+                    clearTimeout(this.searchTimeout);
+                    this.searchTimeout = setTimeout(() => {
+                        DataManager.applyFilters();
+                    }, 300);
+                });
+            }
+            
             // Auto refresh every 5 minutes
             setInterval(() => DataManager.refreshData(), CONFIG.REFRESH_INTERVAL);
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'966e338852eab282',t:'MTc1MzgwODcyOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'966e44fe8411d8a3',t:'MTc1MzgwOTQ0NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
