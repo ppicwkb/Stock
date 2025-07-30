@@ -76,7 +76,7 @@
                 <i class="fas fa-map-marker-alt mr-3"></i>Rekap per Lokasi
             </a>
             <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="UI.showSection('stok-hari-ini')">
-                <i class="fas fa-calendar-day mr-3"></i>Stok Tanggal Target
+                <i class="fas fa-calendar-day mr-3"></i>Stok Masuk Tanggal
             </a>
             <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="UI.showSection('grafik')">
                 <i class="fas fa-chart-bar mr-3"></i>Grafik Ringkas
@@ -85,7 +85,7 @@
         
         <div class="absolute bottom-4 left-4 right-4">
             <div class="bg-blue-50 p-4 rounded-lg">
-                <p class="text-sm text-blue-600">📡 Data dari Gus Amuidz</p>
+                <p class="text-sm text-blue-600">📡 Data dari PPIC</p>
                 <p class="text-xs text-blue-500 mt-1">Sheet: WKB - Auto refresh</p>
                 <div class="flex items-center mt-2">
                     <div id="connectionStatus" class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
@@ -367,10 +367,10 @@
         <div id="stok-hari-ini-section" class="section hidden">
             <div class="flex justify-between items-center mb-6">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-800">📦 Stok Tanggal Target</h2>
+                    <h2 class="text-2xl font-bold text-gray-800">📦 Stok Masuk Tanggal</h2>
                 </div>
                 <div class="text-right">
-                    <div class="text-sm text-gray-500">Tanggal Target</div>
+                    <div class="text-sm text-gray-500">Tanggal Masuk</div>
                     <div class="text-lg font-bold text-blue-600" id="targetDateDisplay">-</div>
                 </div>
             </div>
@@ -499,7 +499,7 @@
         // Authentication System
         const Auth = {
             users: {
-                'admin': { password: 'q', role: 'admin', name: 'Administrator' },
+                'admin': { password: '1', role: 'admin', name: 'Administrator' },
                 'manager': { password: '4', role: 'manager', name: 'Manager' },
                 'staff': { password: '6', role: 'staff', name: 'Staff' }
             },
@@ -810,7 +810,7 @@
             },
 
             updateStats() {
-                const totalItems = const totalItems = this.filteredData.reduce((sum, row) => sum + (parseInt(row[6]) || 0), 0);
+                const totalItems = this.filteredData.length;
                 const totalKg = this.filteredData.reduce((sum, row) => sum + (parseInt(row[7]) || 0), 0);
                 const uniqueProducts = new Set(this.filteredData.map(row => row[1])).size;
                 const uniqueBrands = new Set(this.filteredData.map(row => row[3])).size;
