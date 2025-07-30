@@ -1,58 +1,613 @@
-<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard Stok wkb</title><script src="https://cdn.tailwindcss.com"></script><script src="https://cdn.jsdelivr.net/npm/chart.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"><style>@import url(https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap);*{box-sizing:border-box}body{font-family:Inter,sans-serif}.sidebar{transition:transform .3s ease}.sidebar-item{transition:all .2s ease}.sidebar-item:hover{background:linear-gradient(135deg,#667eea 0,#764ba2 100%)}.table-row:hover{background-color:#f8fafc}.loading-spinner{animation:spin 1s linear infinite}@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}@media (max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main-content{margin-left:0!important}.mobile-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:15;display:none}.mobile-overlay.show{display:block}}</style></head><body class="bg-gray-50"><div class="md:hidden bg-white shadow-md px-4 py-3 flex items-center justify-between"><button onclick="UI.toggleSidebar()" class="text-gray-600 hover:text-gray-800"><i class="fas fa-bars text-xl"></i></button><h1 class="text-lg font-bold text-gray-800">ðŸ“Š Dashboard Stok</h1><div class="w-6"></div></div><div class="mobile-overlay" onclick="UI.closeSidebar()"></div><div class="sidebar fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-20"><div class="p-6 border-b border-gray-200"><div class="flex items-center justify-between"><h1 class="text-xl font-bold text-gray-800">ðŸ“Š Dashboard Stok</h1><button onclick="UI.closeSidebar()" class="md:hidden text-gray-600 hover:text-gray-800"><i class="fas fa-times text-lg"></i></button></div></div><nav class="mt-6 px-4 space-y-2"><a href="#" class="sidebar-item flex items-center px-4 py-3 text-white rounded-lg bg-gradient-to-r from-blue-500 to-purple-600" onclick='UI.showSection("dashboard")'><i class="fas fa-chart-line mr-3"></i>Dashboard Stok</a><a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick='UI.showSection("rekap-po")'><i class="fas fa-folder mr-3"></i>Rekap per PO</a><a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick='UI.showSection("rekap-brand")'><i class="fas fa-tags mr-3"></i>Rekap per Brand</a><a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick='UI.showSection("rekap-lokasi")'><i class="fas fa-map-marker-alt mr-3"></i>Rekap per Lokasi</a><a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick='UI.showSection("stok-hari-ini")'><i class="fas fa-calendar-day mr-3"></i>Stok Masuk Tanggal</a><a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick='UI.showSection("grafik")'><i class="fas fa-chart-bar mr-3"></i>Grafik Ringkas</a></nav><div class="absolute bottom-4 left-4 right-4"><div class="bg-blue-50 p-4 rounded-lg"><p class="text-sm text-blue-600">ðŸ“¡ Data dari PPIC</p><p class="text-xs text-blue-500 mt-1">Sheet: WKB - Auto refresh</p><div class="flex items-center mt-2"><div id="connectionStatus" class="w-2 h-2 bg-green-500 rounded-full mr-2"></div><span class="text-xs text-gray-500">Terhubung</span></div></div></div></div><div class="main-content ml-64 p-4 md:p-6 pt-20 md:pt-6"><div id="dashboard-section" class="section"><div class="mb-6"><h2 class="text-2xl font-bold text-gray-800 mb-2">Dashboard Stok WKB</h2><p class="text-gray-600">PPIC</p></div><div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"><div class="bg-white p-4 rounded-lg shadow"><div class="text-2xl font-bold text-blue-600" id="totalItems">-</div><div class="text-sm text-gray-600">Total Item</div></div><div class="bg-white p-4 rounded-lg shadow"><div class="text-2xl font-bold text-green-600" id="totalKg">-</div><div class="text-sm text-gray-600">Total Kg</div></div><div class="bg-white p-4 rounded-lg shadow"><div class="text-2xl font-bold text-purple-600" id="uniqueProducts">-</div><div class="text-sm text-gray-600">Produk</div></div><div class="bg-white p-4 rounded-lg shadow"><div class="text-2xl font-bold text-orange-600" id="uniqueBrands">-</div><div class="text-sm text-gray-600">Brand</div></div></div><div class="bg-white p-4 rounded-lg shadow mb-6"><div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4"><div><label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label><input type="date" id="startDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Akhir</label><input type="date" id="endDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Produk</label><select id="productFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"><option value="">Semua Produk</option></select></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Brand</label><select id="brandFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"><option value="">Semua Brand</option></select></div></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"><div><label class="block text-sm font-medium text-gray-700 mb-1">Cari Produk/Brand</label><div class="relative"><input type="text" id="searchProduct" placeholder="Ketik nama produk atau brand..." class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"><i class="fas fa-search absolute left-3 top-3 text-gray-400"></i></div></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Lokasi</label><select id="locationFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"><option value="">Semua Lokasi</option></select></div></div><div class="flex flex-wrap gap-2"><button onclick="DataManager.applyFilters()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"><i class="fas fa-filter mr-2"></i>Filter</button><button onclick="DataManager.resetFilters()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"><i class="fas fa-undo mr-2"></i>Reset</button><button onclick="DataManager.refreshData()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"><i class="fas fa-sync-alt mr-2"></i>Refresh</button><button onclick="Utils.exportToPDF()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"><i class="fas fa-file-pdf mr-2"></i>Export PDF</button></div></div><div class="bg-white rounded-lg shadow overflow-hidden"><div class="overflow-x-auto"><table class="w-full"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(0)">Tanggal<i class="fas fa-sort ml-1"></i></th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(1)">Produk<i class="fas fa-sort ml-1"></i></th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(2)">Packing<i class="fas fa-sort ml-1"></i></th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(3)">Brand<i class="fas fa-sort ml-1"></i></th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(4)">Kode<i class="fas fa-sort ml-1"></i></th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(5)">No. PO<i class="fas fa-sort ml-1"></i></th><th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(6)">Jumlah mc<i class="fas fa-sort ml-1"></i></th><th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(7)">Jumlah Kg<i class="fas fa-sort ml-1"></i></th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(8)">Lokasi<i class="fas fa-sort ml-1"></i></th></tr></thead><tbody id="stockTableBody" class="divide-y divide-gray-200"></tbody></table></div><div class="bg-gray-50 px-4 py-3 flex items-center justify-between border-t"><div class="text-sm text-gray-700">Menampilkan<span id="showingStart">0</span>-<span id="showingEnd">0</span>dari<span id="totalRecords">0</span></div><div class="flex space-x-1"><button onclick="DataManager.previousPage()" class="px-3 py-1 bg-white border rounded hover:bg-gray-50" id="prevBtn"><i class="fas fa-chevron-left"></i></button><span id="pageInfo" class="px-3 py-1 bg-blue-600 text-white rounded">1</span><button onclick="DataManager.nextPage()" class="px-3 py-1 bg-white border rounded hover:bg-gray-50" id="nextBtn"><i class="fas fa-chevron-right"></i></button></div></div></div></div><div id="rekap-po-section" class="section hidden"><div class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-gray-800">ðŸ“ Rekap per PO</h2><p class="text-gray-600 mt-1">Total<span id="totalPOCount" class="font-semibold text-blue-600">0</span>PO ditemukan</p></div><div class="text-right"><div class="text-sm text-gray-500">Menampilkan</div><div class="text-lg font-bold text-green-600" id="displayedPOCount">0</div><div class="text-sm text-gray-500">PO teratas</div></div></div><div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"><div class="bg-white p-4 rounded-lg shadow text-center"><div class="text-2xl font-bold text-blue-600" id="totalPOItems">0</div><div class="text-sm text-gray-600">Total Item</div></div><div class="bg-white p-4 rounded-lg shadow text-center"><div class="text-2xl font-bold text-green-600" id="totalPOKg">0</div><div class="text-sm text-gray-600">Total Kg</div></div><div class="bg-white p-4 rounded-lg shadow text-center"><div class="text-2xl font-bold text-purple-600" id="avgItemsPerPO">0</div><div class="text-sm text-gray-600">Rata-rata Item/PO</div></div><div class="bg-white p-4 rounded-lg shadow text-center"><div class="text-2xl font-bold text-orange-600" id="avgKgPerPO">0</div><div class="text-sm text-gray-600">Rata-rata Kg/PO</div></div></div><div class="mb-4"><button id="showAllPOsBtn" onclick="DataManager.toggleShowAllPOs()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"><i class="fas fa-eye mr-2"></i>Tampilkan Semua PO</button><span class="ml-3 text-sm text-gray-500" id="poDisplayInfo">Menampilkan 6 PO teratas</span></div><div id="poSummary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div></div><div id="rekap-brand-section" class="section hidden"><div class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-gray-800">ðŸ·ï¸ Rekap per Brand</h2><p class="text-gray-600 mt-1">Total<span id="totalBrandCount" class="font-semibold text-blue-600">0</span>brand ditemukan</p></div><div class="text-right"><div class="text-sm text-gray-500">Total Stok</div><div class="text-lg font-bold text-green-600" id="totalBrandKg">0 kg</div></div></div><div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"><div class="bg-white p-4 rounded-lg shadow text-center"><div class="text-2xl font-bold text-blue-600" id="totalBrandItems">0</div><div class="text-sm text-gray-600">Total Item</div></div><div class="bg-white p-4 rounded-lg shadow text-center"><div class="text-2xl font-bold text-green-600" id="totalBrandWeight">0</div><div class="text-sm text-gray-600">Total Kg</div></div><div class="bg-white p-4 rounded-lg shadow text-center"><div class="text-2xl font-bold text-purple-600" id="avgProductsPerBrand">0</div><div class="text-sm text-gray-600">Rata-rata Produk/Brand</div></div><div class="bg-white p-4 rounded-lg shadow text-center"><div class="text-2xl font-bold text-orange-600" id="avgKgPerBrand">0</div><div class="text-sm text-gray-600">Rata-rata Kg/Brand</div></div></div><div id="brandSummary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div></div><div id="rekap-lokasi-section" class="section hidden"><div class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-gray-800">ðŸ“ Rekap per Lokasi</h2><p class="text-gray-600 mt-1">Total<span id="totalLocationCount" class="font-semibold text-blue-600">0</span>lokasi ditemukan</p></div><div class="text-right"><div class="text-sm text-gray-500">Total Stok</div><div class="text-lg font-bold text-green-600" id="totalLocationKg">0 kg</div></div></div><div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"><div class="bg-white p-4 rounded-lg shadow text-center"><div class="text-2xl font-bold text-blue-600" id="totalLocationItems">0</div><div class="text-sm text-gray-600">Total Item</div></div><div class="bg-white p-4 rounded-lg shadow text-center"><div class="text-2xl font-bold text-green-600" id="totalLocationWeight">0</div><div class="text-sm text-gray-600">Total Kg</div></div><div class="bg-white p-4 rounded-lg shadow text-center"><div class="text-2xl font-bold text-purple-600" id="avgProductsPerLocation">0</div><div class="text-sm text-gray-600">Rata-rata Produk/Lokasi</div></div><div class="bg-white p-4 rounded-lg shadow text-center"><div class="text-2xl font-bold text-orange-600" id="avgKgPerLocation">0</div><div class="text-sm text-gray-600">Rata-rata Kg/Lokasi</div></div></div><div id="locationSummary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div></div><div id="stok-hari-ini-section" class="section hidden"><div class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-gray-800">ðŸ“¦ Stok Masuk Tanggal</h2></div><div class="text-right"><div class="text-sm text-gray-500">Tanggal Masuk</div><div class="text-lg font-bold text-blue-600" id="targetDateDisplay">-</div></div></div><div class="bg-white rounded-lg shadow p-6"><div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6"><div class="text-center"><div class="text-3xl font-bold text-blue-600" id="todayItems">0</div><div class="text-sm text-gray-600">Total Item</div></div><div class="text-center"><div class="text-3xl font-bold text-green-600" id="todayKg">0</div><div class="text-sm text-gray-600">Total Kg</div></div><div class="text-center"><div class="text-3xl font-bold text-purple-600" id="todayProducts">0</div><div class="text-sm text-gray-600">Produk Berbeda</div></div><div class="text-center"><div class="text-3xl font-bold text-orange-600" id="todayBrands">0</div><div class="text-sm text-gray-600">Brand</div></div></div><div class="text-center text-gray-500"><p>Data per tanggal:<span id="currentDate"></span></p></div></div></div><div id="grafik-section" class="section hidden"><h2 class="text-2xl font-bold text-gray-800 mb-6">ðŸ“Š Grafik Ringkas</h2><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="bg-white p-6 rounded-lg shadow"><h3 class="text-lg font-semibold text-gray-800 mb-4">Stok per Brand</h3><div style="height:250px"><canvas id="brandChart"></canvas></div></div><div class="bg-white p-6 rounded-lg shadow"><h3 class="text-lg font-semibold text-gray-800 mb-4">Trend Stok Mingguan</h3><div style="height:250px"><canvas id="trendChart"></canvas></div></div></div></div></div><div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md mx-4"><div class="text-center mb-6"><div class="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4"><i class="fas fa-lock text-blue-600 text-2xl"></i></div><h2 class="text-2xl font-bold text-gray-800">ðŸ” Login Dashboard</h2><p class="text-gray-600 mt-2">Masukkan kredensial untuk mengakses dashboard stok</p></div><form id="loginForm" class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-2">Username</label><div class="relative"><input type="text" id="username" required class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Masukkan username"><i class="fas fa-user absolute left-3 top-4 text-gray-400"></i></div></div><div><label class="block text-sm font-medium text-gray-700 mb-2">Password</label><div class="relative"><input type="password" id="password" required class="w-full px-4 py-3 pl-10 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Masukkan password"><i class="fas fa-lock absolute left-3 top-4 text-gray-400"></i><button type="button" onclick="Auth.togglePassword()" class="absolute right-3 top-4 text-gray-400 hover:text-gray-600"><i id="passwordToggle" class="fas fa-eye"></i></button></div></div><div id="loginError" class="hidden bg-red-50 border border-red-200 rounded-lg p-3"><div class="flex items-center"><i class="fas fa-exclamation-circle text-red-500 mr-2"></i><span class="text-red-700 text-sm">Username atau password salah!</span></div></div><button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"><span id="loginButtonText"><i class="fas fa-sign-in-alt mr-2"></i>Masuk Dashboard</span><div id="loginSpinner" class="hidden"><div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>Memverifikasi...</div></button></form><div class="mt-6 pt-6 border-t border-gray-200"><div class="bg-blue-50 rounded-lg p-4"><h4 class="text-sm font-medium text-blue-800 mb-2">ðŸ” Akses Dashboard Stok</h4><div class="text-xs text-blue-600 space-y-1"><div><strong>* Login sesuai peran:</strong>Admin, Manager, atau Staff.</div><div>* Gunakan username dan password yang tersedia.</div><div>* Setiap peran memiliki akses dan fitur berbeda.</div></div></div></div></div></div><script>// Configuration
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Stok Produk - Complete</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; }
+        
+        .sidebar { transition: transform 0.3s ease; }
+        .sidebar-item { transition: all 0.2s ease; }
+        .sidebar-item:hover { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .table-row:hover { background-color: #f8fafc; }
+        .loading-spinner { animation: spin 1s linear infinite; }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0 !important; }
+            .mobile-overlay { 
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.5); z-index: 15; display: none;
+            }
+            .mobile-overlay.show { display: block; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Mobile Header -->
+    <div class="md:hidden bg-white shadow-md px-4 py-3 flex items-center justify-between">
+        <button onclick="UI.toggleSidebar()" class="text-gray-600 hover:text-gray-800">
+            <i class="fas fa-bars text-xl"></i>
+        </button>
+        <h1 class="text-lg font-bold text-gray-800">📊 Dashboard Stok</h1>
+        <div class="w-6"></div>
+    </div>
+
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay" onclick="UI.closeSidebar()"></div>
+
+    <!-- Sidebar -->
+    <div class="sidebar fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-20">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h1 class="text-xl font-bold text-gray-800">📊 Dashboard Stok</h1>
+                <button onclick="UI.closeSidebar()" class="md:hidden text-gray-600 hover:text-gray-800">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+        </div>
+        
+        <nav class="mt-6 px-4 space-y-2">
+            <a href="#" class="sidebar-item flex items-center px-4 py-3 text-white rounded-lg bg-gradient-to-r from-blue-500 to-purple-600" onclick="UI.showSection('dashboard')">
+                <i class="fas fa-chart-line mr-3"></i>Dashboard Stok
+            </a>
+            <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="UI.showSection('rekap-po')">
+                <i class="fas fa-folder mr-3"></i>Rekap per PO
+            </a>
+            <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="UI.showSection('rekap-brand')">
+                <i class="fas fa-tags mr-3"></i>Rekap per Brand
+            </a>
+            <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="UI.showSection('rekap-lokasi')">
+                <i class="fas fa-map-marker-alt mr-3"></i>Rekap per Lokasi
+            </a>
+            <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="UI.showSection('rekap-kode')">
+                <i class="fas fa-barcode mr-3"></i>Rekap per Kode
+            </a>
+            <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="UI.showSection('stok-hari-ini')">
+                <i class="fas fa-calendar-day mr-3"></i>Stok Tanggal Target
+            </a>
+            <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="UI.showSection('grafik')">
+                <i class="fas fa-chart-bar mr-3"></i>Grafik Ringkas
+            </a>
+        </nav>
+        
+        <div class="absolute bottom-4 left-4 right-4">
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <p class="text-sm text-blue-600">📡 Data dari Google Sheets</p>
+                <p class="text-xs text-blue-500 mt-1">Sheet: WKB - Auto refresh</p>
+                <div class="flex items-center mt-2">
+                    <div id="connectionStatus" class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    <span class="text-xs text-gray-500">Terhubung</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content ml-64 p-4 md:p-6 pt-20 md:pt-6">
+        <!-- Dashboard Section -->
+        <div id="dashboard-section" class="section">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Dashboard Stok Produk</h2>
+                <p class="text-gray-600">Kelola dan pantau stok produk secara real-time</p>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <div class="text-2xl font-bold text-blue-600" id="totalItems">-</div>
+                    <div class="text-sm text-gray-600">Total MC</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <div class="text-2xl font-bold text-green-600" id="totalKg">-</div>
+                    <div class="text-sm text-gray-600">Total Kg</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <div class="text-2xl font-bold text-purple-600" id="uniqueProducts">-</div>
+                    <div class="text-sm text-gray-600">Produk</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <div class="text-2xl font-bold text-orange-600" id="uniqueBrands">-</div>
+                    <div class="text-sm text-gray-600">Brand</div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white p-4 rounded-lg shadow mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
+                        <input type="date" id="startDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Akhir</label>
+                        <input type="date" id="endDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Produk</label>
+                        <select id="productFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Semua Produk</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                        <select id="brandFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Semua Brand</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kode</label>
+                        <select id="kodeFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Semua Kode</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cari Produk/Brand</label>
+                        <div class="relative">
+                            <input type="text" id="searchProduct" placeholder="Ketik nama produk atau brand..." class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Lokasi</label>
+                        <select id="locationFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Semua Lokasi</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="DataManager.applyFilters()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-filter mr-2"></i>Filter
+                    </button>
+                    <button onclick="DataManager.resetFilters()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-undo mr-2"></i>Reset
+                    </button>
+                    <button onclick="DataManager.refreshData()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-sync-alt mr-2"></i>Refresh
+                    </button>
+                    <button onclick="Utils.exportToPDF()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-file-pdf mr-2"></i>Export PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(0)">
+                                    Tanggal <i class="fas fa-sort ml-1"></i>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(1)">
+                                    Produk <i class="fas fa-sort ml-1"></i>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(2)">
+                                    Packing <i class="fas fa-sort ml-1"></i>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(3)">
+                                    Brand <i class="fas fa-sort ml-1"></i>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(4)">
+                                    Kode <i class="fas fa-sort ml-1"></i>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(5)">
+                                    No. PO <i class="fas fa-sort ml-1"></i>
+                                </th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(6)">
+                                    Jumlah mc <i class="fas fa-sort ml-1"></i>
+                                </th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(7)">
+                                    Jumlah Kg <i class="fas fa-sort ml-1"></i>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onclick="DataManager.sortTable(8)">
+                                    Lokasi <i class="fas fa-sort ml-1"></i>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockTableBody" class="divide-y divide-gray-200">
+                            <!-- Data populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="bg-gray-50 px-4 py-3 flex items-center justify-between border-t">
+                    <div class="text-sm text-gray-700">
+                        Menampilkan <span id="showingStart">0</span> - <span id="showingEnd">0</span> dari <span id="totalRecords">0</span>
+                    </div>
+                    <div class="flex space-x-1">
+                        <button onclick="DataManager.previousPage()" class="px-3 py-1 bg-white border rounded hover:bg-gray-50" id="prevBtn">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span id="pageInfo" class="px-3 py-1 bg-blue-600 text-white rounded">1</span>
+                        <button onclick="DataManager.nextPage()" class="px-3 py-1 bg-white border rounded hover:bg-gray-50" id="nextBtn">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rekap per PO Section -->
+        <div id="rekap-po-section" class="section hidden">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">📁 Rekap per PO</h2>
+                    <p class="text-gray-600 mt-1">Total <span id="totalPOCount" class="font-semibold text-blue-600">0</span> PO ditemukan</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-500">Menampilkan</div>
+                    <div class="text-lg font-bold text-green-600" id="displayedPOCount">0</div>
+                    <div class="text-sm text-gray-500">PO teratas</div>
+                </div>
+            </div>
+            
+            <!-- PO Statistics -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-blue-600" id="totalPOItems">0</div>
+                    <div class="text-sm text-gray-600">Total MC</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-green-600" id="totalPOKg">0</div>
+                    <div class="text-sm text-gray-600">Total Kg</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-purple-600" id="avgItemsPerPO">0</div>
+                    <div class="text-sm text-gray-600">Rata-rata MC/PO</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-orange-600" id="avgKgPerPO">0</div>
+                    <div class="text-sm text-gray-600">Rata-rata Kg/PO</div>
+                </div>
+            </div>
+
+            <!-- Show All POs Button -->
+            <div class="mb-4">
+                <button id="showAllPOsBtn" onclick="DataManager.toggleShowAllPOs()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    <i class="fas fa-eye mr-2"></i>Tampilkan Semua PO
+                </button>
+                <span class="ml-3 text-sm text-gray-500" id="poDisplayInfo">Menampilkan 6 PO teratas</span>
+            </div>
+            
+            <div id="poSummary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- PO cards will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Rekap per Brand Section -->
+        <div id="rekap-brand-section" class="section hidden">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">🏷️ Rekap per Brand</h2>
+                    <p class="text-gray-600 mt-1">Total <span id="totalBrandCount" class="font-semibold text-blue-600">0</span> brand ditemukan</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-500">Total Stok</div>
+                    <div class="text-lg font-bold text-green-600" id="totalBrandKg">0 kg</div>
+                </div>
+            </div>
+            
+            <!-- Brand Statistics -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-blue-600" id="totalBrandItems">0</div>
+                    <div class="text-sm text-gray-600">Total MC</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-green-600" id="totalBrandWeight">0</div>
+                    <div class="text-sm text-gray-600">Total Kg</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-purple-600" id="avgProductsPerBrand">0</div>
+                    <div class="text-sm text-gray-600">Rata-rata Produk/Brand</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-orange-600" id="avgKgPerBrand">0</div>
+                    <div class="text-sm text-gray-600">Rata-rata Kg/Brand</div>
+                </div>
+            </div>
+
+            <div id="brandSummary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Brand cards will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Rekap per Lokasi Section -->
+        <div id="rekap-lokasi-section" class="section hidden">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">📍 Rekap per Lokasi</h2>
+                    <p class="text-gray-600 mt-1">Total <span id="totalLocationCount" class="font-semibold text-blue-600">0</span> lokasi ditemukan</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-500">Total Stok</div>
+                    <div class="text-lg font-bold text-green-600" id="totalLocationKg">0 kg</div>
+                </div>
+            </div>
+            
+            <!-- Location Statistics -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-blue-600" id="totalLocationItems">0</div>
+                    <div class="text-sm text-gray-600">Total MC</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-green-600" id="totalLocationWeight">0</div>
+                    <div class="text-sm text-gray-600">Total Kg</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-purple-600" id="avgProductsPerLocation">0</div>
+                    <div class="text-sm text-gray-600">Rata-rata Produk/Lokasi</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-orange-600" id="avgKgPerLocation">0</div>
+                    <div class="text-sm text-gray-600">Rata-rata Kg/Lokasi</div>
+                </div>
+            </div>
+
+            <div id="locationSummary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Location cards will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Rekap per Kode Section -->
+        <div id="rekap-kode-section" class="section hidden">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">🏷️ Rekap per Kode</h2>
+                    <p class="text-gray-600 mt-1">Total <span id="totalKodeCount" class="font-semibold text-blue-600">0</span> kode ditemukan</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-500">Total Stok</div>
+                    <div class="text-lg font-bold text-green-600" id="totalKodeKg">0 kg</div>
+                </div>
+            </div>
+            
+            <!-- Kode Statistics -->
+            <div class="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-blue-600" id="totalKodeItems">0</div>
+                    <div class="text-sm text-gray-600">Total MC</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center">
+                    <div class="text-2xl font-bold text-green-600" id="totalKodeWeight">0</div>
+                    <div class="text-sm text-gray-600">Total Kg</div>
+                </div>
+            </div>
+
+            <!-- Search Kode -->
+            <div class="bg-white p-4 rounded-lg shadow mb-6">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cari Kode</label>
+                        <div class="relative">
+                            <input type="text" id="kodeSearchInput" placeholder="Ketik kode yang dicari..." class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="DataManager.searchKode()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                            <i class="fas fa-search mr-2"></i>Cari
+                        </button>
+                        <button onclick="DataManager.resetKodeSearch()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors ml-2">
+                            <i class="fas fa-undo mr-2"></i>Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="kodeSummary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Kode cards will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Stok Tanggal Target Section -->
+        <div id="stok-hari-ini-section" class="section hidden">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">📦 Stok Tanggal Target</h2>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-500">Tanggal Target</div>
+                    <div class="text-lg font-bold text-blue-600" id="targetDateDisplay">-</div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-blue-600" id="todayItems">0</div>
+                        <div class="text-sm text-gray-600">Total MC</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-green-600" id="todayKg">0</div>
+                        <div class="text-sm text-gray-600">Total Kg</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-purple-600" id="todayProducts">0</div>
+                        <div class="text-sm text-gray-600">Produk Berbeda</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-orange-600" id="todayBrands">0</div>
+                        <div class="text-sm text-gray-600">Brand</div>
+                    </div>
+                </div>
+                <div class="text-center text-gray-500">
+                    <p>Data per tanggal: <span id="currentDate"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grafik Section -->
+        <div id="grafik-section" class="section hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">📊 Grafik Ringkas</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Stok per Brand</h3>
+                    <div style="height: 250px;">
+                        <canvas id="brandChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Trend Stok Mingguan</h3>
+                    <div style="height: 250px;">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md mx-4">
+            <div class="text-center mb-6">
+                <div class="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                    <i class="fas fa-lock text-blue-600 text-2xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">🔐 Login Dashboard</h2>
+                <p class="text-gray-600 mt-2">Masukkan kredensial untuk mengakses dashboard stok</p>
+            </div>
+            
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <div class="relative">
+                        <input type="text" id="username" required 
+                               class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="Masukkan username" autocomplete="username">
+                        <i class="fas fa-user absolute left-3 top-4 text-gray-400"></i>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <div class="relative">
+                        <input type="password" id="password" required 
+                               class="w-full px-4 py-3 pl-10 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="Masukkan password" autocomplete="current-password">
+                        <i class="fas fa-lock absolute left-3 top-4 text-gray-400"></i>
+                        <button type="button" onclick="Auth.togglePassword()" class="absolute right-3 top-4 text-gray-400 hover:text-gray-600">
+                            <i id="passwordToggle" class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="loginError" class="hidden bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+                        <span class="text-red-700 text-sm">Username atau password salah!</span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                    <span id="loginButtonText">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Masuk Dashboard
+                    </span>
+                    <div id="loginSpinner" class="hidden">
+                        <div class="loading-spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                        Memverifikasi...
+                    </div>
+                </button>
+            </form>
+            
+            <div class="mt-6 pt-6 border-t border-gray-200">
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-blue-800 mb-2">👤 Demo Akun:</h4>
+                    <div class="text-xs text-blue-600 space-y-1">
+                        <div><strong>Admin:</strong> admin / admin123</div>
+                        <div><strong>Manager:</strong> manager / manager123</div>
+                        <div><strong>Staff:</strong> staff / staff123</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
         const CONFIG = {
             SHEET_ID: '1LDAZoAPX67UkNpjYSsOyz4hNmcnJ3CD_JPnpz3NhysQ',
             SHEET_NAME: 'WKB',
             API_KEY: 'AIzaSyBBY9oqeEjjpVnIXOhdkhR6xuTsCr5gYU8',
             ITEMS_PER_PAGE: 10,
-            REFRESH_INTERVAL: 300000, // 5 minutes
-            TARGET_DATE_CELL: 'J1' // Cell that contains the target date
+            REFRESH_INTERVAL: 300000,
+            TARGET_DATE_CELL: 'J1'
         };
 
         // Authentication System
         const Auth = {
             users: {
-                'admin': { password: '1', role: 'admin', name: 'Administrator' },
-                'manager': { password: '4', role: 'manager', name: 'Manager' },
-                'staff': { password: '6', role: 'staff', name: 'Staff' }
+                'admin': { password: 'a1', role: 'admin', name: 'Administrator' },
+                'manager': { password: 'manager123', role: 'manager', name: 'Manager Gudang' },
+                'staff': { password: 'staff123', role: 'staff', name: 'Staff Gudang' }
             },
             
             currentUser: null,
             
             init() {
-                // Check if user is already logged in
                 const savedUser = localStorage.getItem('dashboardUser');
                 if (savedUser) {
                     try {
                         this.currentUser = JSON.parse(savedUser);
                         this.showDashboard();
                     } catch (e) {
+                        localStorage.removeItem('dashboardUser');
                         this.showLogin();
                     }
                 } else {
                     this.showLogin();
                 }
                 
-                // Setup login form
-                document.getElementById('loginForm').addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    this.handleLogin();
-                });
+                const loginForm = document.getElementById('loginForm');
+                if (loginForm) {
+                    loginForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        this.handleLogin();
+                    });
+                }
             },
             
             showLogin() {
-                document.getElementById('loginModal').classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
+                const modal = document.getElementById('loginModal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                }
             },
             
             hideLogin() {
-                document.getElementById('loginModal').classList.add('hidden');
-                document.body.style.overflow = 'auto';
+                const modal = document.getElementById('loginModal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    document.body.style.overflow = 'auto';
+                }
             },
             
             showDashboard() {
                 this.hideLogin();
                 this.updateUserInfo();
-                // Initialize dashboard after successful login
                 setTimeout(() => {
                     Utils.setCurrentDate();
                     Charts.init();
@@ -61,23 +616,28 @@
             },
             
             async handleLogin() {
-                const username = document.getElementById('username').value.trim();
-                const password = document.getElementById('password').value;
+                const usernameInput = document.getElementById('username');
+                const passwordInput = document.getElementById('password');
                 const errorDiv = document.getElementById('loginError');
                 const buttonText = document.getElementById('loginButtonText');
                 const spinner = document.getElementById('loginSpinner');
                 
-                // Show loading
+                if (!usernameInput || !passwordInput || !errorDiv || !buttonText || !spinner) {
+                    console.error('Login form elements not found');
+                    return;
+                }
+                
+                const username = usernameInput.value.trim();
+                const password = passwordInput.value;
+                
                 buttonText.classList.add('hidden');
                 spinner.classList.remove('hidden');
                 errorDiv.classList.add('hidden');
                 
-                // Simulate API call delay
+                // Simulate loading
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // Check credentials
                 if (this.users[username] && this.users[username].password === password) {
-                    // Success
                     this.currentUser = {
                         username: username,
                         name: this.users[username].name,
@@ -85,10 +645,8 @@
                         loginTime: new Date().toISOString()
                     };
                     
-                    // Save to localStorage
                     localStorage.setItem('dashboardUser', JSON.stringify(this.currentUser));
                     
-                    // Show success message briefly
                     buttonText.innerHTML = '<i class="fas fa-check mr-2"></i>Login Berhasil!';
                     buttonText.classList.remove('hidden');
                     spinner.classList.add('hidden');
@@ -98,23 +656,27 @@
                     }, 500);
                     
                 } else {
-                    // Error
                     buttonText.classList.remove('hidden');
                     spinner.classList.add('hidden');
                     errorDiv.classList.remove('hidden');
-                    
-                    // Clear password field
-                    document.getElementById('password').value = '';
+                    passwordInput.value = '';
                 }
             },
             
             updateUserInfo() {
                 if (!this.currentUser) return;
                 
-                // Add user info to sidebar
                 const sidebar = document.querySelector('.sidebar');
+                if (!sidebar) return;
+                
+                // Remove existing user info if any
+                const existingUserInfo = sidebar.querySelector('.user-info');
+                if (existingUserInfo) {
+                    existingUserInfo.remove();
+                }
+                
                 const userInfo = document.createElement('div');
-                userInfo.className = 'px-4 py-3 border-b border-gray-200';
+                userInfo.className = 'user-info px-4 py-3 border-b border-gray-200';
                 userInfo.innerHTML = `
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
@@ -132,9 +694,10 @@
                     </div>
                 `;
                 
-                // Insert after the header
                 const header = sidebar.querySelector('.p-6');
-                header.parentNode.insertBefore(userInfo, header.nextSibling);
+                if (header) {
+                    header.parentNode.insertBefore(userInfo, header.nextSibling);
+                }
             },
             
             logout() {
@@ -148,6 +711,8 @@
             togglePassword() {
                 const passwordInput = document.getElementById('password');
                 const toggleIcon = document.getElementById('passwordToggle');
+                
+                if (!passwordInput || !toggleIcon) return;
                 
                 if (passwordInput.type === 'password') {
                     passwordInput.type = 'text';
@@ -168,7 +733,8 @@
             sortColumn: -1,
             sortDirection: 'asc',
             showAllPOs: false,
-            targetDate: null, // Date from cell I1
+            targetDate: null,
+            kodeSearchTerm: '',
 
             async fetchTargetDate() {
                 try {
@@ -179,12 +745,10 @@
                         const data = await response.json();
                         if (data.values && data.values[0] && data.values[0][0]) {
                             this.targetDate = data.values[0][0];
-                            console.log('Target date from I1:', this.targetDate);
                         }
                     }
                 } catch (error) {
                     console.error('Error fetching target date:', error);
-                    // Fallback to today's date
                     this.targetDate = new Date().toISOString().split('T')[0];
                 }
             },
@@ -196,7 +760,6 @@
                 UI.showLoading();
                 
                 try {
-                    // Fetch target date first
                     await this.fetchTargetDate();
                     
                     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${CONFIG.SHEET_NAME}?key=${CONFIG.API_KEY}`;
@@ -233,7 +796,6 @@
             },
 
             loadSampleData() {
-                // Set fallback target date if not already set
                 if (!this.targetDate) {
                     this.targetDate = new Date().toISOString().split('T')[0];
                 }
@@ -258,30 +820,45 @@
                 this.updateStats();
                 this.updateSummaries();
                 Charts.updateCharts();
-                Utils.updateCurrentDate(); // Update the target date display
+                Utils.updateCurrentDate();
             },
 
             populateFilters() {
                 const products = [...new Set(this.stockData.map(row => row[1]).filter(item => item && item !== '-'))];
                 const brands = [...new Set(this.stockData.map(row => row[3]).filter(item => item && item !== '-'))];
+                const kodes = [...new Set(this.stockData.map(row => row[4]).filter(item => item && item !== '-'))];
                 const locations = [...new Set(this.stockData.map(row => row[8]).filter(item => item && item !== '-'))];
                 
                 const productFilter = document.getElementById('productFilter');
                 const brandFilter = document.getElementById('brandFilter');
+                const kodeFilter = document.getElementById('kodeFilter');
                 const locationFilter = document.getElementById('locationFilter');
                 
-                productFilter.innerHTML = '<option value="">Semua Produk</option>' + 
-                    products.map(p => `<option value="${p}">${p}</option>`).join('');
+                if (productFilter) {
+                    productFilter.innerHTML = '<option value="">Semua Produk</option>' + 
+                        products.map(p => `<option value="${p}">${p}</option>`).join('');
+                }
                 
-                brandFilter.innerHTML = '<option value="">Semua Brand</option>' + 
-                    brands.map(b => `<option value="${b}">${b}</option>`).join('');
+                if (brandFilter) {
+                    brandFilter.innerHTML = '<option value="">Semua Brand</option>' + 
+                        brands.map(b => `<option value="${b}">${b}</option>`).join('');
+                }
                 
-                locationFilter.innerHTML = '<option value="">Semua Lokasi</option>' + 
-                    locations.map(l => `<option value="${l}">${l}</option>`).join('');
+                if (kodeFilter) {
+                    kodeFilter.innerHTML = '<option value="">Semua Kode</option>' + 
+                        kodes.map(k => `<option value="${k}">${k}</option>`).join('');
+                }
+                
+                if (locationFilter) {
+                    locationFilter.innerHTML = '<option value="">Semua Lokasi</option>' + 
+                        locations.map(l => `<option value="${l}">${l}</option>`).join('');
+                }
             },
 
             populateTable() {
                 const tbody = document.getElementById('stockTableBody');
+                if (!tbody) return;
+                
                 const start = (this.currentPage - 1) * CONFIG.ITEMS_PER_PAGE;
                 const end = Math.min(start + CONFIG.ITEMS_PER_PAGE, this.filteredData.length);
                 
@@ -312,34 +889,51 @@
                 const end = Math.min(this.currentPage * CONFIG.ITEMS_PER_PAGE, total);
                 const maxPages = Math.ceil(total / CONFIG.ITEMS_PER_PAGE);
                 
-                document.getElementById('showingStart').textContent = total > 0 ? start : 0;
-                document.getElementById('showingEnd').textContent = end;
-                document.getElementById('totalRecords').textContent = total;
-                document.getElementById('pageInfo').textContent = `${this.currentPage} / ${maxPages}`;
+                const showingStart = document.getElementById('showingStart');
+                const showingEnd = document.getElementById('showingEnd');
+                const totalRecords = document.getElementById('totalRecords');
+                const pageInfo = document.getElementById('pageInfo');
+                const prevBtn = document.getElementById('prevBtn');
+                const nextBtn = document.getElementById('nextBtn');
                 
-                document.getElementById('prevBtn').disabled = this.currentPage <= 1;
-                document.getElementById('nextBtn').disabled = this.currentPage >= maxPages;
+                if (showingStart) showingStart.textContent = total > 0 ? start : 0;
+                if (showingEnd) showingEnd.textContent = end;
+                if (totalRecords) totalRecords.textContent = total;
+                if (pageInfo) pageInfo.textContent = `${this.currentPage} / ${maxPages}`;
+                
+                if (prevBtn) prevBtn.disabled = this.currentPage <= 1;
+                if (nextBtn) nextBtn.disabled = this.currentPage >= maxPages;
             },
 
             updateStats() {
-                const totalItems = const totalItems = this.filteredData.reduce((sum, row) => sum + (parseInt(row[6]) || 0), 0);
+                const totalItems = this.filteredData.reduce((sum, row) => sum + (parseInt(row[6]) || 0), 0);
                 const totalKg = this.filteredData.reduce((sum, row) => sum + (parseInt(row[7]) || 0), 0);
                 const uniqueProducts = new Set(this.filteredData.map(row => row[1])).size;
                 const uniqueBrands = new Set(this.filteredData.map(row => row[3])).size;
                 
-                document.getElementById('totalItems').textContent = totalItems.toLocaleString();
-                document.getElementById('totalKg').textContent = totalKg.toLocaleString();
-                document.getElementById('uniqueProducts').textContent = uniqueProducts;
-                document.getElementById('uniqueBrands').textContent = uniqueBrands;
+                const totalItemsEl = document.getElementById('totalItems');
+                const totalKgEl = document.getElementById('totalKg');
+                const uniqueProductsEl = document.getElementById('uniqueProducts');
+                const uniqueBrandsEl = document.getElementById('uniqueBrands');
                 
-                // Update target date stats (from cell I1)
+                if (totalItemsEl) totalItemsEl.textContent = totalItems.toLocaleString();
+                if (totalKgEl) totalKgEl.textContent = totalKg.toLocaleString();
+                if (uniqueProductsEl) uniqueProductsEl.textContent = uniqueProducts;
+                if (uniqueBrandsEl) uniqueBrandsEl.textContent = uniqueBrands;
+                
                 const targetDateData = this.getTargetDateData();
+                const targetItemsMc = targetDateData.reduce((sum, row) => sum + (parseInt(row[6]) || 0), 0);
                 const targetKg = targetDateData.reduce((sum, row) => sum + (parseInt(row[7]) || 0), 0);
                 
-                document.getElementById('todayItems').textContent = targetDateData.length;
-                document.getElementById('todayKg').textContent = targetKg.toLocaleString();
-                document.getElementById('todayProducts').textContent = new Set(targetDateData.map(row => row[1])).size;
-                document.getElementById('todayBrands').textContent = new Set(targetDateData.map(row => row[3])).size;
+                const todayItemsEl = document.getElementById('todayItems');
+                const todayKgEl = document.getElementById('todayKg');
+                const todayProductsEl = document.getElementById('todayProducts');
+                const todayBrandsEl = document.getElementById('todayBrands');
+                
+                if (todayItemsEl) todayItemsEl.textContent = targetItemsMc.toLocaleString();
+                if (todayKgEl) todayKgEl.textContent = targetKg.toLocaleString();
+                if (todayProductsEl) todayProductsEl.textContent = new Set(targetDateData.map(row => row[1])).size;
+                if (todayBrandsEl) todayBrandsEl.textContent = new Set(targetDateData.map(row => row[3])).size;
             },
 
             updateSummaries() {
@@ -348,72 +942,81 @@
                 this.filteredData.forEach(row => {
                     const po = row[5];
                     if (!poSummary[po]) poSummary[po] = { items: 0, kg: 0, products: new Set() };
-                    poSummary[po].items++;
+                    poSummary[po].items += parseInt(row[6]) || 0;
                     poSummary[po].kg += parseInt(row[7]) || 0;
                     poSummary[po].products.add(row[1]);
                 });
                 
-                // Sort POs by total kg (descending)
                 const sortedPOs = Object.entries(poSummary).sort((a, b) => b[1].kg - a[1].kg);
                 const totalPOs = sortedPOs.length;
                 const displayLimit = this.showAllPOs ? totalPOs : 6;
                 const displayedPOs = sortedPOs.slice(0, displayLimit);
                 
-                // Update PO statistics
                 const totalPOItems = sortedPOs.reduce((sum, [po, data]) => sum + data.items, 0);
                 const totalPOKg = sortedPOs.reduce((sum, [po, data]) => sum + data.kg, 0);
                 const avgItemsPerPO = totalPOs > 0 ? Math.round(totalPOItems / totalPOs) : 0;
                 const avgKgPerPO = totalPOs > 0 ? Math.round(totalPOKg / totalPOs) : 0;
                 
-                document.getElementById('totalPOCount').textContent = totalPOs;
-                document.getElementById('displayedPOCount').textContent = displayedPOs.length;
-                document.getElementById('totalPOItems').textContent = totalPOItems.toLocaleString();
-                document.getElementById('totalPOKg').textContent = totalPOKg.toLocaleString();
-                document.getElementById('avgItemsPerPO').textContent = avgItemsPerPO;
-                document.getElementById('avgKgPerPO').textContent = avgKgPerPO;
+                const totalPOCountEl = document.getElementById('totalPOCount');
+                const displayedPOCountEl = document.getElementById('displayedPOCount');
+                const totalPOItemsEl = document.getElementById('totalPOItems');
+                const totalPOKgEl = document.getElementById('totalPOKg');
+                const avgItemsPerPOEl = document.getElementById('avgItemsPerPO');
+                const avgKgPerPOEl = document.getElementById('avgKgPerPO');
                 
-                // Update button text and info
+                if (totalPOCountEl) totalPOCountEl.textContent = totalPOs;
+                if (displayedPOCountEl) displayedPOCountEl.textContent = displayedPOs.length;
+                if (totalPOItemsEl) totalPOItemsEl.textContent = totalPOItems.toLocaleString();
+                if (totalPOKgEl) totalPOKgEl.textContent = totalPOKg.toLocaleString();
+                if (avgItemsPerPOEl) avgItemsPerPOEl.textContent = avgItemsPerPO;
+                if (avgKgPerPOEl) avgKgPerPOEl.textContent = avgKgPerPO;
+                
                 const showAllBtn = document.getElementById('showAllPOsBtn');
                 const displayInfo = document.getElementById('poDisplayInfo');
                 
-                if (this.showAllPOs) {
-                    showAllBtn.innerHTML = '<i class="fas fa-eye-slash mr-2"></i>Tampilkan 6 Teratas';
-                    displayInfo.textContent = `Menampilkan semua ${totalPOs} PO`;
-                } else {
-                    showAllBtn.innerHTML = '<i class="fas fa-eye mr-2"></i>Tampilkan Semua PO';
-                    displayInfo.textContent = `Menampilkan ${Math.min(6, totalPOs)} dari ${totalPOs} PO`;
+                if (showAllBtn && displayInfo) {
+                    if (this.showAllPOs) {
+                        showAllBtn.innerHTML = '<i class="fas fa-eye-slash mr-2"></i>Tampilkan 6 Teratas';
+                        displayInfo.textContent = `Menampilkan semua ${totalPOs} PO`;
+                    } else {
+                        showAllBtn.innerHTML = '<i class="fas fa-eye mr-2"></i>Tampilkan Semua PO';
+                        displayInfo.textContent = `Menampilkan ${Math.min(6, totalPOs)} dari ${totalPOs} PO`;
+                    }
                 }
                 
-                document.getElementById('poSummary').innerHTML = displayedPOs
-                    .map(([po, data], index) => `
-                        <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
-                            <div class="flex justify-between items-start mb-4">
-                                <h3 class="text-lg font-semibold text-gray-800">${po}</h3>
-                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">#${index + 1}</span>
+                const poSummaryEl = document.getElementById('poSummary');
+                if (poSummaryEl) {
+                    poSummaryEl.innerHTML = displayedPOs
+                        .map(([po, data], index) => `
+                            <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
+                                <div class="flex justify-between items-start mb-4">
+                                    <h3 class="text-lg font-semibold text-gray-800">${po}</h3>
+                                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">#${index + 1}</span>
+                                </div>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Total MC:</span>
+                                        <span class="font-medium text-blue-600">${data.items}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Total Kg:</span>
+                                        <span class="font-medium text-green-600">${data.kg.toLocaleString()} kg</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Jenis Produk:</span>
+                                        <span class="font-medium text-purple-600">${data.products.size}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Rata-rata/Item:</span>
+                                        <span class="font-medium text-orange-600">${Math.round(data.kg / data.items)} kg</span>
+                                    </div>
+                                    <div class="pt-2 border-t">
+                                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Aktif</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="space-y-3">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total Item:</span>
-                                    <span class="font-medium text-blue-600">${data.items}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total Kg:</span>
-                                    <span class="font-medium text-green-600">${data.kg.toLocaleString()} kg</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Jenis Produk:</span>
-                                    <span class="font-medium text-purple-600">${data.products.size}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Rata-rata/Item:</span>
-                                    <span class="font-medium text-orange-600">${Math.round(data.kg / data.items)} kg</span>
-                                </div>
-                                <div class="pt-2 border-t">
-                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Aktif</span>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
+                        `).join('');
+                }
                 
                 // Brand Summary
                 const brandSummary = {};
@@ -427,10 +1030,9 @@
                     }
                     if (!brandSummary[brand][product]) brandSummary[brand][product] = 0;
                     brandSummary[brand][product] += parseInt(row[7]) || 0;
-                    brandItemCount[brand]++;
+                    brandItemCount[brand] += parseInt(row[6]) || 0;
                 });
                 
-                // Calculate brand statistics
                 const totalBrands = Object.keys(brandSummary).length;
                 const totalBrandItems = Object.values(brandItemCount).reduce((sum, count) => sum + count, 0);
                 const totalBrandWeight = Object.values(brandSummary).reduce((sum, products) => 
@@ -440,70 +1042,78 @@
                 ) : 0;
                 const avgKgPerBrand = totalBrands > 0 ? Math.round(totalBrandWeight / totalBrands) : 0;
                 
-                // Update brand statistics
-                document.getElementById('totalBrandCount').textContent = totalBrands;
-                document.getElementById('totalBrandKg').textContent = totalBrandWeight.toLocaleString() + ' kg';
-                document.getElementById('totalBrandItems').textContent = totalBrandItems.toLocaleString();
-                document.getElementById('totalBrandWeight').textContent = totalBrandWeight.toLocaleString();
-                document.getElementById('avgProductsPerBrand').textContent = avgProductsPerBrand;
-                document.getElementById('avgKgPerBrand').textContent = avgKgPerBrand;
+                const totalBrandCountEl = document.getElementById('totalBrandCount');
+                const totalBrandKgEl = document.getElementById('totalBrandKg');
+                const totalBrandItemsEl = document.getElementById('totalBrandItems');
+                const totalBrandWeightEl = document.getElementById('totalBrandWeight');
+                const avgProductsPerBrandEl = document.getElementById('avgProductsPerBrand');
+                const avgKgPerBrandEl = document.getElementById('avgKgPerBrand');
                 
-                // Sort brands by total weight (descending)
+                if (totalBrandCountEl) totalBrandCountEl.textContent = totalBrands;
+                if (totalBrandKgEl) totalBrandKgEl.textContent = totalBrandWeight.toLocaleString() + ' kg';
+                if (totalBrandItemsEl) totalBrandItemsEl.textContent = totalBrandItems.toLocaleString();
+                if (totalBrandWeightEl) totalBrandWeightEl.textContent = totalBrandWeight.toLocaleString();
+                if (avgProductsPerBrandEl) avgProductsPerBrandEl.textContent = avgProductsPerBrand;
+                if (avgKgPerBrandEl) avgKgPerBrandEl.textContent = avgKgPerBrand;
+                
                 const sortedBrands = Object.entries(brandSummary).sort((a, b) => {
                     const totalA = Object.values(a[1]).reduce((sum, kg) => sum + kg, 0);
                     const totalB = Object.values(b[1]).reduce((sum, kg) => sum + kg, 0);
                     return totalB - totalA;
                 });
                 
-                document.getElementById('brandSummary').innerHTML = sortedBrands
-                    .map(([brand, products], index) => {
-                        const total = Object.values(products).reduce((sum, kg) => sum + kg, 0);
-                        const productCount = Object.keys(products).length;
-                        const itemCount = brandItemCount[brand];
-                        const avgPerProduct = productCount > 0 ? Math.round(total / productCount) : 0;
-                        
-                        return `
-                            <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
-                                <div class="flex justify-between items-start mb-4">
-                                    <h3 class="text-lg font-semibold text-gray-800">${brand}</h3>
-                                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">#${index + 1}</span>
+                const brandSummaryEl = document.getElementById('brandSummary');
+                if (brandSummaryEl) {
+                    brandSummaryEl.innerHTML = sortedBrands
+                        .map(([brand, products], index) => {
+                            const total = Object.values(products).reduce((sum, kg) => sum + kg, 0);
+                            const productCount = Object.keys(products).length;
+                            const itemCount = brandItemCount[brand];
+                            const avgPerProduct = productCount > 0 ? Math.round(total / productCount) : 0;
+                            
+                            return `
+                                <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
+                                    <div class="flex justify-between items-start mb-4">
+                                        <h3 class="text-lg font-semibold text-gray-800">${brand}</h3>
+                                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">#${index + 1}</span>
+                                    </div>
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Total MC:</span>
+                                            <span class="font-medium text-blue-600">${itemCount}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Total Kg:</span>
+                                            <span class="font-medium text-green-600">${total.toLocaleString()} kg</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Jenis Produk:</span>
+                                            <span class="font-medium text-purple-600">${productCount}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Rata-rata/Produk:</span>
+                                            <span class="font-medium text-orange-600">${avgPerProduct} kg</span>
+                                        </div>
+                                        <div class="pt-2 border-t">
+                                            <div class="text-xs text-gray-500 mb-2">Top 3 Produk:</div>
+                                            ${Object.entries(products)
+                                                .sort((a, b) => b[1] - a[1])
+                                                .slice(0, 3)
+                                                .map(([product, kg]) => `
+                                                    <div class="flex justify-between text-sm">
+                                                        <span class="text-gray-600 truncate mr-2">${product}</span>
+                                                        <span class="font-medium">${kg.toLocaleString()} kg</span>
+                                                    </div>
+                                                `).join('')}
+                                        </div>
+                                        <div class="pt-2 border-t">
+                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Aktif</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="space-y-3">
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Total Item:</span>
-                                        <span class="font-medium text-blue-600">${itemCount}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Total Kg:</span>
-                                        <span class="font-medium text-green-600">${total.toLocaleString()} kg</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Jenis Produk:</span>
-                                        <span class="font-medium text-purple-600">${productCount}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Rata-rata/Produk:</span>
-                                        <span class="font-medium text-orange-600">${avgPerProduct} kg</span>
-                                    </div>
-                                    <div class="pt-2 border-t">
-                                        <div class="text-xs text-gray-500 mb-2">Top 3 Produk:</div>
-                                        ${Object.entries(products)
-                                            .sort((a, b) => b[1] - a[1])
-                                            .slice(0, 3)
-                                            .map(([product, kg]) => `
-                                                <div class="flex justify-between text-sm">
-                                                    <span class="text-gray-600 truncate mr-2">${product}</span>
-                                                    <span class="font-medium">${kg.toLocaleString()} kg</span>
-                                                </div>
-                                            `).join('')}
-                                    </div>
-                                    <div class="pt-2 border-t">
-                                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Aktif</span>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
+                            `;
+                        }).join('');
+                }
 
                 // Location Summary
                 const locationSummary = {};
@@ -517,10 +1127,9 @@
                     }
                     if (!locationSummary[location][product]) locationSummary[location][product] = 0;
                     locationSummary[location][product] += parseInt(row[7]) || 0;
-                    locationItemCount[location]++;
+                    locationItemCount[location] += parseInt(row[6]) || 0;
                 });
                 
-                // Calculate location statistics
                 const totalLocations = Object.keys(locationSummary).length;
                 const totalLocationItems = Object.values(locationItemCount).reduce((sum, count) => sum + count, 0);
                 const totalLocationWeight = Object.values(locationSummary).reduce((sum, products) => 
@@ -530,87 +1139,207 @@
                 ) : 0;
                 const avgKgPerLocation = totalLocations > 0 ? Math.round(totalLocationWeight / totalLocations) : 0;
                 
-                // Update location statistics
-                document.getElementById('totalLocationCount').textContent = totalLocations;
-                document.getElementById('totalLocationKg').textContent = totalLocationWeight.toLocaleString() + ' kg';
-                document.getElementById('totalLocationItems').textContent = totalLocationItems.toLocaleString();
-                document.getElementById('totalLocationWeight').textContent = totalLocationWeight.toLocaleString();
-                document.getElementById('avgProductsPerLocation').textContent = avgProductsPerLocation;
-                document.getElementById('avgKgPerLocation').textContent = avgKgPerLocation;
+                const totalLocationCountEl = document.getElementById('totalLocationCount');
+                const totalLocationKgEl = document.getElementById('totalLocationKg');
+                const totalLocationItemsEl = document.getElementById('totalLocationItems');
+                const totalLocationWeightEl = document.getElementById('totalLocationWeight');
+                const avgProductsPerLocationEl = document.getElementById('avgProductsPerLocation');
+                const avgKgPerLocationEl = document.getElementById('avgKgPerLocation');
                 
-                // Sort locations by total weight (descending)
+                if (totalLocationCountEl) totalLocationCountEl.textContent = totalLocations;
+                if (totalLocationKgEl) totalLocationKgEl.textContent = totalLocationWeight.toLocaleString() + ' kg';
+                if (totalLocationItemsEl) totalLocationItemsEl.textContent = totalLocationItems.toLocaleString();
+                if (totalLocationWeightEl) totalLocationWeightEl.textContent = totalLocationWeight.toLocaleString();
+                if (avgProductsPerLocationEl) avgProductsPerLocationEl.textContent = avgProductsPerLocation;
+                if (avgKgPerLocationEl) avgKgPerLocationEl.textContent = avgKgPerLocation;
+                
                 const sortedLocations = Object.entries(locationSummary).sort((a, b) => {
                     const totalA = Object.values(a[1]).reduce((sum, kg) => sum + kg, 0);
                     const totalB = Object.values(b[1]).reduce((sum, kg) => sum + kg, 0);
                     return totalB - totalA;
                 });
                 
-                document.getElementById('locationSummary').innerHTML = sortedLocations
-                    .map(([location, products], index) => {
-                        const total = Object.values(products).reduce((sum, kg) => sum + kg, 0);
-                        const productCount = Object.keys(products).length;
-                        const itemCount = locationItemCount[location];
-                        const avgPerProduct = productCount > 0 ? Math.round(total / productCount) : 0;
-                        
-                        return `
-                            <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
-                                <div class="flex justify-between items-start mb-4">
-                                    <h3 class="text-lg font-semibold text-gray-800">${location}</h3>
-                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">#${index + 1}</span>
+                const locationSummaryEl = document.getElementById('locationSummary');
+                if (locationSummaryEl) {
+                    locationSummaryEl.innerHTML = sortedLocations
+                        .map(([location, products], index) => {
+                            const total = Object.values(products).reduce((sum, kg) => sum + kg, 0);
+                            const productCount = Object.keys(products).length;
+                            const itemCount = locationItemCount[location];
+                            const avgPerProduct = productCount > 0 ? Math.round(total / productCount) : 0;
+                            
+                            return `
+                                <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
+                                    <div class="flex justify-between items-start mb-4">
+                                        <h3 class="text-lg font-semibold text-gray-800">${location}</h3>
+                                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">#${index + 1}</span>
+                                    </div>
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Total MC:</span>
+                                            <span class="font-medium text-blue-600">${itemCount}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Total Kg:</span>
+                                            <span class="font-medium text-green-600">${total.toLocaleString()} kg</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Jenis Produk:</span>
+                                            <span class="font-medium text-purple-600">${productCount}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Rata-rata/Produk:</span>
+                                            <span class="font-medium text-orange-600">${avgPerProduct} kg</span>
+                                        </div>
+                                        <div class="pt-2 border-t">
+                                            <div class="text-xs text-gray-500 mb-2">Top 3 Produk:</div>
+                                            ${Object.entries(products)
+                                                .sort((a, b) => b[1] - a[1])
+                                                .slice(0, 3)
+                                                .map(([product, kg]) => `
+                                                    <div class="flex justify-between text-sm">
+                                                        <span class="text-gray-600 truncate mr-2">${product}</span>
+                                                        <span class="font-medium">${kg.toLocaleString()} kg</span>
+                                                    </div>
+                                                `).join('')}
+                                        </div>
+                                        <div class="pt-2 border-t">
+                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Aktif</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="space-y-3">
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Total Item:</span>
-                                        <span class="font-medium text-blue-600">${itemCount}</span>
+                            `;
+                        }).join('');
+                }
+
+                // Kode Summary
+                this.updateKodeSummary();
+            },
+
+            updateKodeSummary() {
+                const kodeSummary = {};
+                const kodeItemCount = {};
+                
+                // Filter data based on search term
+                let filteredKodeData = this.filteredData;
+                if (this.kodeSearchTerm) {
+                    filteredKodeData = this.filteredData.filter(row => 
+                        row[4] && row[4].toLowerCase().includes(this.kodeSearchTerm.toLowerCase())
+                    );
+                }
+                
+                filteredKodeData.forEach(row => {
+                    const kode = row[4] || 'Tidak Diketahui';
+                    const product = row[1];
+                    if (!kodeSummary[kode]) {
+                        kodeSummary[kode] = {};
+                        kodeItemCount[kode] = 0;
+                    }
+                    if (!kodeSummary[kode][product]) kodeSummary[kode][product] = 0;
+                    kodeSummary[kode][product] += parseInt(row[7]) || 0;
+                    kodeItemCount[kode] += parseInt(row[6]) || 0;
+                });
+                
+                const totalKodes = Object.keys(kodeSummary).length;
+                const totalKodeItems = Object.values(kodeItemCount).reduce((sum, count) => sum + count, 0);
+                const totalKodeWeight = Object.values(kodeSummary).reduce((sum, products) => 
+                    sum + Object.values(products).reduce((pSum, kg) => pSum + kg, 0), 0);
+                
+                const totalKodeCountEl = document.getElementById('totalKodeCount');
+                const totalKodeKgEl = document.getElementById('totalKodeKg');
+                const totalKodeItemsEl = document.getElementById('totalKodeItems');
+                const totalKodeWeightEl = document.getElementById('totalKodeWeight');
+                
+                if (totalKodeCountEl) totalKodeCountEl.textContent = totalKodes;
+                if (totalKodeKgEl) totalKodeKgEl.textContent = totalKodeWeight.toLocaleString() + ' kg';
+                if (totalKodeItemsEl) totalKodeItemsEl.textContent = totalKodeItems.toLocaleString();
+                if (totalKodeWeightEl) totalKodeWeightEl.textContent = totalKodeWeight.toLocaleString();
+                
+                const sortedKodes = Object.entries(kodeSummary).sort((a, b) => {
+                    const totalA = Object.values(a[1]).reduce((sum, kg) => sum + kg, 0);
+                    const totalB = Object.values(b[1]).reduce((sum, kg) => sum + kg, 0);
+                    return totalB - totalA;
+                });
+                
+                const kodeSummaryEl = document.getElementById('kodeSummary');
+                if (kodeSummaryEl) {
+                    kodeSummaryEl.innerHTML = sortedKodes
+                        .map(([kode, products], index) => {
+                            const total = Object.values(products).reduce((sum, kg) => sum + kg, 0);
+                            const productCount = Object.keys(products).length;
+                            const itemCount = kodeItemCount[kode];
+                            
+                            return `
+                                <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
+                                    <div class="flex justify-between items-start mb-4">
+                                        <h3 class="text-lg font-semibold text-gray-800 font-mono">${kode}</h3>
+                                        <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">#${index + 1}</span>
                                     </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Total Kg:</span>
-                                        <span class="font-medium text-green-600">${total.toLocaleString()} kg</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Jenis Produk:</span>
-                                        <span class="font-medium text-purple-600">${productCount}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Rata-rata/Produk:</span>
-                                        <span class="font-medium text-orange-600">${avgPerProduct} kg</span>
-                                    </div>
-                                    <div class="pt-2 border-t">
-                                        <div class="text-xs text-gray-500 mb-2">Top 3 Produk:</div>
-                                        ${Object.entries(products)
-                                            .sort((a, b) => b[1] - a[1])
-                                            .slice(0, 3)
-                                            .map(([product, kg]) => `
-                                                <div class="flex justify-between text-sm">
-                                                    <span class="text-gray-600 truncate mr-2">${product}</span>
-                                                    <span class="font-medium">${kg.toLocaleString()} kg</span>
-                                                </div>
-                                            `).join('')}
-                                    </div>
-                                    <div class="pt-2 border-t">
-                                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Aktif</span>
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Total MC:</span>
+                                            <span class="font-medium text-blue-600">${itemCount}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Total Kg:</span>
+                                            <span class="font-medium text-green-600">${total.toLocaleString()} kg</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Jenis Produk:</span>
+                                            <span class="font-medium text-purple-600">${productCount}</span>
+                                        </div>
+                                        <div class="pt-2 border-t">
+                                            <div class="text-xs text-gray-500 mb-2">Top 3 Produk:</div>
+                                            ${Object.entries(products)
+                                                .sort((a, b) => b[1] - a[1])
+                                                .slice(0, 3)
+                                                .map(([product, kg]) => `
+                                                    <div class="flex justify-between text-sm">
+                                                        <span class="text-gray-600 truncate mr-2">${product}</span>
+                                                        <span class="font-medium">${kg.toLocaleString()} kg</span>
+                                                    </div>
+                                                `).join('')}
+                                        </div>
+                                        <div class="pt-2 border-t">
+                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Aktif</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        `;
-                    }).join('');
+                            `;
+                        }).join('');
+                }
+            },
+
+            searchKode() {
+                const searchInput = document.getElementById('kodeSearchInput');
+                if (searchInput) {
+                    this.kodeSearchTerm = searchInput.value.trim();
+                    this.updateKodeSummary();
+                }
+            },
+
+            resetKodeSearch() {
+                const searchInput = document.getElementById('kodeSearchInput');
+                if (searchInput) {
+                    searchInput.value = '';
+                    this.kodeSearchTerm = '';
+                    this.updateKodeSummary();
+                }
             },
 
             applyFilters() {
-                const startDate = document.getElementById('startDate').value;
-                const endDate = document.getElementById('endDate').value;
-                const product = document.getElementById('productFilter').value;
-                const brand = document.getElementById('brandFilter').value;
-                const location = document.getElementById('locationFilter').value;
-                const searchTerm = document.getElementById('searchProduct').value.toLowerCase();
-                
-                console.log('Filter applied:', { startDate, endDate, product, brand, location, searchTerm });
+                const startDate = document.getElementById('startDate')?.value;
+                const endDate = document.getElementById('endDate')?.value;
+                const product = document.getElementById('productFilter')?.value;
+                const brand = document.getElementById('brandFilter')?.value;
+                const kode = document.getElementById('kodeFilter')?.value;
+                const location = document.getElementById('locationFilter')?.value;
+                const searchTerm = document.getElementById('searchProduct')?.value?.toLowerCase() || '';
                 
                 this.filteredData = this.stockData.filter(row => {
                     let matchesDate = true;
                     
                     if (startDate || endDate) {
-                        // Convert row date to comparable format
                         const rowDate = this.parseDate(row[0]);
                         const filterStartDate = startDate ? new Date(startDate) : null;
                         const filterEndDate = endDate ? new Date(endDate) : null;
@@ -625,17 +1354,15 @@
                     
                     const matchesProduct = !product || row[1] === product;
                     const matchesBrand = !brand || row[3] === brand;
+                    const matchesKode = !kode || row[4] === kode;
                     const matchesLocation = !location || row[8] === location;
                     
-                    // Enhanced search: search in both product name and brand
                     const matchesSearch = !searchTerm || 
-                        row[1].toLowerCase().includes(searchTerm) || // Search in product name
-                        row[3].toLowerCase().includes(searchTerm);   // Search in brand name
+                        row[1].toLowerCase().includes(searchTerm) ||
+                        row[3].toLowerCase().includes(searchTerm);
                     
-                    return matchesDate && matchesProduct && matchesBrand && matchesLocation && matchesSearch;
+                    return matchesDate && matchesProduct && matchesBrand && matchesKode && matchesLocation && matchesSearch;
                 });
-                
-                console.log(`Filtered ${this.filteredData.length} items from ${this.stockData.length} total`);
                 
                 this.currentPage = 1;
                 this.updateUI();
@@ -644,43 +1371,45 @@
             parseDate(dateString) {
                 if (!dateString || dateString === '-') return new Date(0);
                 
-                // Try different date formats
                 let date;
                 
-                // Format: YYYY-MM-DD
                 if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
                     date = new Date(dateString);
                 }
-                // Format: DD/MM/YYYY
                 else if (dateString.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
                     const parts = dateString.split('/');
                     date = new Date(parts[2], parts[1] - 1, parts[0]);
                 }
-                // Format: DD-MM-YYYY
                 else if (dateString.match(/^\d{2}-\d{2}-\d{4}$/)) {
                     const parts = dateString.split('-');
                     date = new Date(parts[2], parts[1] - 1, parts[0]);
                 }
-                // Format: MM/DD/YYYY
                 else if (dateString.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
                     date = new Date(dateString);
                 }
                 else {
-                    // Try to parse as-is
                     date = new Date(dateString);
                 }
                 
-                // If date is invalid, return epoch
                 return isNaN(date.getTime()) ? new Date(0) : date;
             },
 
             resetFilters() {
-                document.getElementById('startDate').value = '';
-                document.getElementById('endDate').value = '';
-                document.getElementById('productFilter').value = '';
-                document.getElementById('brandFilter').value = '';
-                document.getElementById('locationFilter').value = '';
-                document.getElementById('searchProduct').value = '';
+                const startDateEl = document.getElementById('startDate');
+                const endDateEl = document.getElementById('endDate');
+                const productFilterEl = document.getElementById('productFilter');
+                const brandFilterEl = document.getElementById('brandFilter');
+                const kodeFilterEl = document.getElementById('kodeFilter');
+                const locationFilterEl = document.getElementById('locationFilter');
+                const searchProductEl = document.getElementById('searchProduct');
+                
+                if (startDateEl) startDateEl.value = '';
+                if (endDateEl) endDateEl.value = '';
+                if (productFilterEl) productFilterEl.value = '';
+                if (brandFilterEl) brandFilterEl.value = '';
+                if (kodeFilterEl) kodeFilterEl.value = '';
+                if (locationFilterEl) locationFilterEl.value = '';
+                if (searchProductEl) searchProductEl.value = '';
                 
                 this.filteredData = [...this.stockData];
                 this.currentPage = 1;
@@ -699,7 +1428,6 @@
                     let aVal = a[columnIndex];
                     let bVal = b[columnIndex];
                     
-                    // Handle numeric columns
                     if (columnIndex === 6 || columnIndex === 7) {
                         aVal = parseInt(aVal) || 0;
                         bVal = parseInt(bVal) || 0;
@@ -740,7 +1468,6 @@
             getTargetDateData() {
                 if (!this.targetDate) return [];
                 
-                // Normalize target date for comparison
                 const normalizedTargetDate = this.normalizeDate(this.targetDate);
                 
                 return this.filteredData.filter(row => {
@@ -752,7 +1479,6 @@
             normalizeDate(dateString) {
                 if (!dateString || dateString === '-') return '';
                 
-                // Try to parse and normalize to YYYY-MM-DD format
                 const date = this.parseDate(dateString);
                 if (isNaN(date.getTime())) return '';
                 
@@ -776,14 +1502,17 @@
         // UI Management
         const UI = {
             showLoading() {
-                document.getElementById('stockTableBody').innerHTML = `
-                    <tr><td colspan="9" class="px-6 py-12 text-center">
-                        <div class="flex flex-col items-center">
-                            <div class="loading-spinner w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mb-4"></div>
-                            <p class="text-gray-600">Memuat data...</p>
-                        </div>
-                    </td></tr>
-                `;
+                const tbody = document.getElementById('stockTableBody');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr><td colspan="9" class="px-6 py-12 text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="loading-spinner w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mb-4"></div>
+                                <p class="text-gray-600">Memuat data...</p>
+                            </div>
+                        </td></tr>
+                    `;
+                }
             },
 
             hideLoading() {
@@ -791,30 +1520,35 @@
             },
 
             showError(message) {
-                document.getElementById('stockTableBody').innerHTML = `
-                    <tr><td colspan="9" class="px-6 py-12 text-center">
-                        <div class="flex flex-col items-center">
-                            <i class="fas fa-exclamation-triangle text-yellow-500 text-3xl mb-4"></i>
-                            <p class="text-gray-600 mb-2">Gagal memuat data</p>
-                            <p class="text-sm text-gray-500 mb-4">${message}</p>
-                            <button onclick="DataManager.refreshData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                                <i class="fas fa-refresh mr-2"></i>Coba Lagi
-                            </button>
-                        </div>
-                    </td></tr>
-                `;
+                const tbody = document.getElementById('stockTableBody');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr><td colspan="9" class="px-6 py-12 text-center">
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-exclamation-triangle text-yellow-500 text-3xl mb-4"></i>
+                                <p class="text-gray-600 mb-2">Gagal memuat data</p>
+                                <p class="text-sm text-gray-500 mb-4">${message}</p>
+                                <button onclick="DataManager.refreshData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                                    <i class="fas fa-refresh mr-2"></i>Coba Lagi
+                                </button>
+                            </div>
+                        </td></tr>
+                    `;
+                }
             },
 
             setConnectionStatus(connected) {
                 const status = document.getElementById('connectionStatus');
-                const statusText = status.nextElementSibling;
+                const statusText = status?.nextElementSibling;
                 
-                if (connected) {
-                    status.className = 'w-2 h-2 bg-green-500 rounded-full mr-2';
-                    statusText.textContent = 'Terhubung';
-                } else {
-                    status.className = 'w-2 h-2 bg-red-500 rounded-full mr-2';
-                    statusText.textContent = 'Terputus';
+                if (status && statusText) {
+                    if (connected) {
+                        status.className = 'w-2 h-2 bg-green-500 rounded-full mr-2';
+                        statusText.textContent = 'Terhubung';
+                    } else {
+                        status.className = 'w-2 h-2 bg-red-500 rounded-full mr-2';
+                        statusText.textContent = 'Terputus';
+                    }
                 }
             },
 
@@ -822,37 +1556,41 @@
                 const sidebar = document.querySelector('.sidebar');
                 const overlay = document.querySelector('.mobile-overlay');
                 
-                sidebar.classList.toggle('open');
-                overlay.classList.toggle('show');
+                if (sidebar) sidebar.classList.toggle('open');
+                if (overlay) overlay.classList.toggle('show');
             },
 
             closeSidebar() {
                 const sidebar = document.querySelector('.sidebar');
                 const overlay = document.querySelector('.mobile-overlay');
                 
-                sidebar.classList.remove('open');
-                overlay.classList.remove('show');
+                if (sidebar) sidebar.classList.remove('open');
+                if (overlay) overlay.classList.remove('show');
             },
 
             showSection(sectionName) {
-                // Hide all sections
                 document.querySelectorAll('.section').forEach(section => {
                     section.classList.add('hidden');
                 });
                 
-                // Show selected section
-                document.getElementById(sectionName + '-section').classList.remove('hidden');
+                const targetSection = document.getElementById(sectionName + '-section');
+                if (targetSection) {
+                    targetSection.classList.remove('hidden');
+                }
                 
-                // Update sidebar
                 document.querySelectorAll('.sidebar-item').forEach(item => {
                     item.classList.remove('bg-gradient-to-r', 'from-blue-500', 'to-purple-600', 'text-white');
                     item.classList.add('text-gray-700');
                 });
                 
-                event.target.closest('.sidebar-item').classList.add('bg-gradient-to-r', 'from-blue-500', 'to-purple-600', 'text-white');
-                event.target.closest('.sidebar-item').classList.remove('text-gray-700');
+                if (event && event.target) {
+                    const sidebarItem = event.target.closest('.sidebar-item');
+                    if (sidebarItem) {
+                        sidebarItem.classList.add('bg-gradient-to-r', 'from-blue-500', 'to-purple-600', 'text-white');
+                        sidebarItem.classList.remove('text-gray-700');
+                    }
+                }
                 
-                // Close mobile sidebar
                 if (window.innerWidth <= 768) {
                     this.closeSidebar();
                 }
@@ -870,8 +1608,10 @@
             },
 
             initBrandChart() {
-                const ctx = document.getElementById('brandChart').getContext('2d');
-                this.brandChart = new Chart(ctx, {
+                const ctx = document.getElementById('brandChart');
+                if (!ctx) return;
+                
+                this.brandChart = new Chart(ctx.getContext('2d'), {
                     type: 'doughnut',
                     data: {
                         labels: [],
@@ -889,8 +1629,10 @@
             },
 
             initTrendChart() {
-                const ctx = document.getElementById('trendChart').getContext('2d');
-                this.trendChart = new Chart(ctx, {
+                const ctx = document.getElementById('trendChart');
+                if (!ctx) return;
+                
+                this.trendChart = new Chart(ctx.getContext('2d'), {
                     type: 'line',
                     data: {
                         labels: [],
@@ -945,7 +1687,6 @@
             updateCharts() {
                 if (!this.brandChart || !DataManager.filteredData.length) return;
                 
-                // Update brand chart with real data
                 const brandData = {};
                 DataManager.filteredData.forEach(row => {
                     const brand = row[3];
@@ -960,14 +1701,12 @@
                 this.brandChart.data.datasets[0].data = values;
                 this.brandChart.update();
                 
-                // Update trend chart with real data
                 this.updateTrendChart();
             },
 
             updateTrendChart() {
                 if (!this.trendChart || !DataManager.filteredData.length) return;
                 
-                // Group data by date and calculate daily totals
                 const dailyData = {};
                 DataManager.filteredData.forEach(row => {
                     const date = row[0];
@@ -979,25 +1718,20 @@
                     }
                 });
                 
-                // Sort dates and get last 7 days of data
                 const sortedDates = Object.keys(dailyData).sort();
                 const last7Days = sortedDates.slice(-7);
                 
-                // If we have less than 7 days, pad with recent dates
                 const labels = [];
                 const data = [];
                 
                 if (last7Days.length > 0) {
-                    // Use actual dates from data
                     last7Days.forEach(date => {
-                        // Format date for display (DD/MM)
                         const dateObj = DataManager.parseDate(date);
                         const formattedDate = `${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`;
                         labels.push(formattedDate);
                         data.push(dailyData[date]);
                     });
                 } else {
-                    // Fallback: show last 7 days even if no data
                     const today = new Date();
                     for (let i = 6; i >= 0; i--) {
                         const date = new Date(today);
@@ -1020,17 +1754,14 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
-                // Title
                 doc.setFontSize(16);
                 doc.setFont(undefined, 'bold');
                 doc.text('Dashboard Stok Produk', 14, 20);
                 
-                // Date
                 doc.setFontSize(10);
                 doc.setFont(undefined, 'normal');
                 doc.text(`Diekspor: ${new Date().toLocaleDateString('id-ID')}`, 14, 30);
                 
-                // Table
                 const headers = ['Tanggal', 'Produk', 'Packing', 'Brand', 'Kode', 'PO', 'mc', 'Kg', 'Lokasi'];
                 const tableData = DataManager.filteredData.map(row => [
                     row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8] || '-'
@@ -1045,54 +1776,62 @@
                     alternateRowStyles: { fillColor: [248, 250, 252] }
                 });
                 
-                // Summary
                 const finalY = doc.lastAutoTable.finalY + 10;
                 const totalKg = DataManager.filteredData.reduce((sum, row) => sum + (parseInt(row[7]) || 0), 0);
                 
                 doc.setFont(undefined, 'bold');
                 doc.text(`Total: ${DataManager.filteredData.length} item, ${totalKg.toLocaleString()} kg`, 14, finalY);
                 
-                doc.save('dashboard-stok-wkb.pdf');
+                doc.save('dashboard-stok-produk.pdf');
             },
 
             setCurrentDate() {
-                // This will be updated after data is fetched
-                document.getElementById('currentDate').textContent = 'Memuat...';
+                const currentDateEl = document.getElementById('currentDate');
+                if (currentDateEl) {
+                    currentDateEl.textContent = 'Memuat...';
+                }
             },
 
             updateCurrentDate() {
                 const formattedDate = DataManager.getFormattedTargetDate();
-                document.getElementById('currentDate').textContent = formattedDate;
+                const currentDateEl = document.getElementById('currentDate');
+                const targetDateEl = document.getElementById('targetDateDisplay');
                 
-                // Also update the target date display in the header
-                const targetDateElement = document.getElementById('targetDateDisplay');
-                if (targetDateElement) {
-                    targetDateElement.textContent = formattedDate;
-                }
+                if (currentDateEl) currentDateEl.textContent = formattedDate;
+                if (targetDateEl) targetDateEl.textContent = formattedDate;
             }
         };
 
         // Initialize Application
         document.addEventListener('DOMContentLoaded', () => {
-            // Initialize authentication first
             Auth.init();
             
-            // Add real-time search functionality
             const searchInput = document.getElementById('searchProduct');
             if (searchInput) {
                 searchInput.addEventListener('input', function() {
-                    // Debounce search to avoid too many calls
                     clearTimeout(this.searchTimeout);
                     this.searchTimeout = setTimeout(() => {
                         DataManager.applyFilters();
                     }, 300);
                 });
             }
+
+            const kodeSearchInput = document.getElementById('kodeSearchInput');
+            if (kodeSearchInput) {
+                kodeSearchInput.addEventListener('input', function() {
+                    clearTimeout(this.kodeSearchTimeout);
+                    this.kodeSearchTimeout = setTimeout(() => {
+                        DataManager.searchKode();
+                    }, 300);
+                });
+            }
             
-            // Auto refresh every 5 minutes (only if logged in)
             setInterval(() => {
                 if (Auth.currentUser) {
                     DataManager.refreshData();
                 }
             }, CONFIG.REFRESH_INTERVAL);
-        });</script><script>!function(){function t(){var e=n.contentDocument||n.contentWindow.document;if(e){var t=e.createElement("script");t.innerHTML="window.__CF$cv$params={r:'966e8a1271816d06',t:'MTc1MzgxMjI3My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);",e.getElementsByTagName("head")[0].appendChild(t)}}if(document.body){var n=document.createElement("iframe");if(n.height=1,n.width=1,n.style.position="absolute",n.style.top=0,n.style.left=0,n.style.border="none",n.style.visibility="hidden",document.body.appendChild(n),"loading"!==document.readyState)t();else if(window.addEventListener)document.addEventListener("DOMContentLoaded",t);else{var a=document.onreadystatechange||function(){};document.onreadystatechange=function(e){a(e),"loading"!==document.readyState&&(document.onreadystatechange=a,t())}}}}()</script></body></html>
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9675cff8a34cdfa8',t:'MTc1Mzg4ODUzNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
