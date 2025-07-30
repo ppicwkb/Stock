@@ -474,11 +474,11 @@
             
             <div class="mt-6 pt-6 border-t border-gray-200">
                 <div class="bg-blue-50 rounded-lg p-4">
-                    <h4 class="text-sm font-medium text-blue-800 mb-2">👤 Demo Akun:</h4>
+                    <h4 class="text-sm font-medium text-blue-800 mb-2">🔐 Akses Dashboard Stok</h4>
                     <div class="text-xs text-blue-600 space-y-1">
-                        <div><strong>Admin:</strong> admin / admin123</div>
-                        <div><strong>Manager:</strong> manager / manager123</div>
-                        <div><strong>Staff:</strong> staff / staff123</div>
+                        <div><strong>* Login sesuai peran:</strong> Admin, Manager, atau Staff.</div>
+                        <div>* Gunakan username dan password yang tersedia.</div>
+                        <div>* Setiap peran memiliki akses dan fitur berbeda.</div>
                     </div>
                 </div>
             </div>
@@ -499,9 +499,9 @@
         // Authentication System
         const Auth = {
             users: {
-                'admin': { password: 'admin123', role: 'admin', name: 'Administrator' },
-                'manager': { password: '4', role: 'manager', name: 'Manager PPIC' },
-                'staff': { password: 'staff123', role: 'staff', name: 'Staff PPIC' }
+                'admin': { password: '1', role: 'admin', name: 'Administrator' },
+                'manager': { password: '4', role: 'manager', name: 'Manager' },
+                'staff': { password: '6', role: 'staff', name: 'Staff' }
             },
             
             currentUser: null,
@@ -1540,7 +1540,7 @@
                 doc.setFont(undefined, 'bold');
                 doc.text(`Total: ${DataManager.filteredData.length} item, ${totalKg.toLocaleString()} kg`, 14, finalY);
                 
-                doc.save('dashboard-stok-produk.pdf');
+                doc.save('dashboard-stok-wkb.pdf');
             },
 
             setCurrentDate() {
