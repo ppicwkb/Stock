@@ -810,7 +810,7 @@
             },
 
             updateStats() {
-                const totalItems = this.filteredData.length;
+                const totalItems = const totalItems = this.filteredData.reduce((sum, row) => sum + (parseInt(row[6]) || 0), 0);
                 const totalKg = this.filteredData.reduce((sum, row) => sum + (parseInt(row[7]) || 0), 0);
                 const uniqueProducts = new Set(this.filteredData.map(row => row[1])).size;
                 const uniqueBrands = new Set(this.filteredData.map(row => row[3])).size;
