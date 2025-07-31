@@ -596,14 +596,37 @@
     </div>
 
     <script>
-        // Configuration - GANTI DENGAN DATA GOOGLE SHEETS ANDA
         const CONFIG = {
     FILE_URL: 'https://cdn.jsdelivr.net/gh/PPICWG/Stock/WKB.xlsx',
     SHEET_NAME: 'WKB',
-    TARGET_DATE_CELL: 'J1',
-    ITEMS_PER_PAGE: 10,
-    REFRESH_INTERVAL: 300000 // 5 menit
+    TARGET_DATE_CELL: 'J1'
 };
+
+async function fetchExcelData() {
+    try {
+        const response = await fetch(CONFIG.FILE_URL);
+        if (!response.ok) {
+            throw new Error(`Gagal ambil file Excel: ${response.status} ${response.statusText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+        // Ambil tanggal dari J1
+        const sheet = workbook.Sheets[CONFIG.SHEET_NAME];
+        const targetDate = sheet[CONFIG.TARGET_DATE_CELL]?.v || 'Tanggal tidak ditemukan';
+        console.log("Target Date:", targetDate);
+
+        // Ambil semua data
+        const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        console.log("Data Excel:", allRows);
+    } catch (error) {
+        console.error("Error membaca Excel:", error);
+    }
+}
+
+fetchExcelData();
+
 
 
         // User credentials
