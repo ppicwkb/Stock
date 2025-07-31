@@ -1,3 +1,4 @@
+https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
 // Configuration - GANTI DENGAN DATA GOOGLE SHEETS ANDA
         const CONFIG = {
             FILE_URL: 'https://cdn.jsdelivr.net/gh/PPICWG/Stock/WKB.xlsx', // Gunakan jsDelivr agar bisa diakses langsung
@@ -1638,3 +1639,7 @@
             console.log('🚀 Initializing Dashboard...');
             initAuth();
         });
+
+(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9679310b77f4ce46',t:'MTc1MzkyMzk3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();
+
+
