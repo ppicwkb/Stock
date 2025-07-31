@@ -1,5 +1,5 @@
  const CONFIG = {
-      EXCEL_URL: 'EXCEL_URL: 'https://cdn.jsdelivr.net/gh/PPICWG/Stock@abc123/WKB.xlsx'',
+      EXCEL_URL: 'EXCEL_URL: 'https://raw.githubusercontent.com/PPICWG/Stock/main/WKB.xlsx'',
       ITEMS_PER_PAGE: 10,
       REFRESH_INTERVAL: 300000 // 5 menit
     
