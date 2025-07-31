@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Stok Produk - Google Sheets</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -594,40 +596,15 @@
             </div>
         </div>
     </div>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.full.min.js"></script>
+
     <script>
-        const CONFIG = {
-    FILE_URL: 'https://cdn.jsdelivr.net/gh/PPICWG/Stock/WKB.xlsx',
-    SHEET_NAME: 'WKB',
-    TARGET_DATE_CELL: 'J1'
-};
-
-async function fetchExcelData() {
-    try {
-        const response = await fetch(CONFIG.FILE_URL);
-        if (!response.ok) {
-            throw new Error(`Gagal ambil file Excel: ${response.status} ${response.statusText}`);
-        }
-
-        const arrayBuffer = await response.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-        // Ambil tanggal dari J1
-        const sheet = workbook.Sheets[CONFIG.SHEET_NAME];
-        const targetDate = sheet[CONFIG.TARGET_DATE_CELL]?.v || 'Tanggal tidak ditemukan';
-        console.log("Target Date:", targetDate);
-
-        // Ambil semua data
-        const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        console.log("Data Excel:", allRows);
-    } catch (error) {
-        console.error("Error membaca Excel:", error);
-    }
-}
-
-fetchExcelData();
-
-
+          // Configuration - Menggunakan file Excel dari jsDelivr
+    const CONFIG = {
+      EXCEL_URL: 'https://cdn.jsdelivr.net/gh/PPICWG/Stock/WKB.xlsx',
+      ITEMS_PER_PAGE: 10,
+      REFRESH_INTERVAL: 300000 // 5 menit
+    
+        };
 
         // User credentials
         const USERS = {
@@ -778,7 +755,76 @@ fetchExcelData();
             }
         }
 
-       
+        // Fungsi untuk mengambil target date dari sel J1 di sheet 'WKB'
+async function fetchTargetDate() {
+    try {
+        const response = await fetch(CONFIG.EXCEL_URL);
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const worksheet = workbook.Sheets['WKB']; // Sesuaikan dengan nama sheet
+
+        // Ambil isi dari sel J1
+        const cell = worksheet['J1'];
+        targetDate = cell ? cell.v : new Date().toISOString().split('T')[0];
+
+    } catch (error) {
+        console.error('Error fetching target date:', error);
+        targetDate = new Date().toISOString().split('T')[0];
+    }
+}
+
+// Fungsi utama untuk mengambil dan mengolah data dari Excel
+async function fetchData() {
+    if (isLoading) return;
+
+    isLoading = true;
+    showLoading();
+
+    try {
+        // Ambil target date dulu
+        await fetchTargetDate();
+
+        // Ambil data utama dari Excel
+        const response = await fetch(CONFIG.EXCEL_URL);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const worksheet = workbook.Sheets['WKB'];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '-' });
+
+        if (jsonData.length > 1) {
+            // Buang baris header
+            const dataRows = jsonData.slice(1);
+
+            stockData = dataRows.map(row => {
+                const processedRow = [];
+                for (let i = 0; i < 9; i++) {
+                    processedRow[i] = row[i] || '-';
+                }
+                return processedRow;
+            });
+
+            filteredData = [...stockData];
+            updateUI();
+            setConnectionStatus(true, 'Terhubung');
+
+            console.log(`✅ Data berhasil dimuat: ${stockData.length} baris`);
+        } else {
+            throw new Error('No data found in Excel file');
+        }
+    } catch (error) {
+        console.error('❌ Error fetching data:', error);
+        setConnectionStatus(false, 'Terputus');
+        showError(error.message);
+    } finally {
+        isLoading = false;
+        hideLoading();
+    }
+}
+           
 
         function loadSampleData() {
             console.log('📝 Loading sample data...');
@@ -2202,5 +2248,5 @@ fetchExcelData();
             initAuth();
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'967af9d7e130e416',t:'MTc1Mzk0MjY4MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'967da36e5343e8a2',t:'MTc1Mzk3MDU5OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
