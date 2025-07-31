@@ -778,69 +778,7 @@ fetchExcelData();
             }
         }
 
-        // Data fetching functions
-        // Data fetching functions untuk Excel di GitHub
-async function fetchTargetDate(workbook) {
-    try {
-        const sheet = workbook.Sheets[CONFIG.SHEET_NAME];
-        const cellValue = sheet[CONFIG.TARGET_DATE_CELL]?.v;
-        targetDate = cellValue || new Date().toISOString().split('T')[0];
-    } catch (error) {
-        console.error('Error fetching target date:', error);
-        targetDate = new Date().toISOString().split('T')[0];
-    }
-}
-
-async function fetchData() {
-    if (isLoading) return;
-
-    isLoading = true;
-    showLoading();
-
-    try {
-        // Ambil file Excel dari GitHub
-        const response = await fetch(CONFIG.FILE_URL);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const arrayBuffer = await response.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-        // Ambil target date
-        await fetchTargetDate(workbook);
-
-        // Ambil semua data dari sheet
-        const sheet = workbook.Sheets[CONFIG.SHEET_NAME];
-        const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-        if (allRows.length > 1) {
-            // Skip header row
-            stockData = allRows.slice(1).map(row => {
-                const processedRow = [];
-                for (let i = 0; i < 9; i++) {
-                    processedRow[i] = row[i] || '-';
-                }
-                return processedRow;
-            });
-
-            filteredData = [...stockData];
-            updateUI();
-            setConnectionStatus(true, 'Terhubung');
-
-            console.log(`✅ Data berhasil dimuat: ${stockData.length} baris`);
-        } else {
-            throw new Error('No data found in Excel');
-        }
-    } catch (error) {
-        console.error('❌ Error fetching data:', error);
-        setConnectionStatus(false, 'Terputus');
-        showError(error.message);
-    } finally {
-        isLoading = false;
-        hideLoading();
-    }
-}
+       
 
         function loadSampleData() {
             console.log('📝 Loading sample data...');
