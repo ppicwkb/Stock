@@ -7,9 +7,9 @@
 
         // User credentials
         const USERS = {
-            'admin': { password: 'admin123', role: 'admin', name: 'Administrator' },
-            'manager': { password: 'manager123', role: 'manager', name: 'Manager Gudang' },
-            'staff': { password: 'staff123', role: 'staff', name: 'Staff Gudang' }
+            'admin': { password: '1', role: 'admin', name: 'Administrator' },
+            'manager': { password: '2', role: 'manager', name: 'Manager Gudang' },
+            'staff': { password: '3', role: 'staff', name: 'Staff Gudang' }
         };
 
         // Global variables
