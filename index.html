@@ -1118,13 +1118,9 @@
                 }, 500);
                 
                 // Fetch Excel file from CDN with no-cache headers
-                const response = await fetch(CDN_DATA_URL + '?t=' + Date.now(), {
-                    method: 'GET',
-                    headers: {
-                        'Cache-Control': 'no-cache',
-                        'Pragma': 'no-cache'
-                    }
-                });
+                const response = await fetch(CONFIG.EXCEL_URL);
+const arrayBuffer = await response.arrayBuffer();
+const workbook = XLSX.read(arrayBuffer, { type: "array" });
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
