@@ -1,13 +1,28 @@
 // Configuration - GANTI DENGAN DATA GOOGLE SHEETS ANDA
         const CONFIG = {
-            SHEET_ID: '18ga4stLBiKWujBryPQHUHrUzgYjprFJEKvUWSd3Zcks', // Ganti dengan ID Google Sheets Anda
-            SHEET_NAME: 'WKB', // Ganti dengan nama sheet Anda
-            API_KEY: 'AIzaSyBBY9oqeEjjpVnIXOhdkhR6xuTsCr5gYU8', // Ganti dengan API Key Anda
-            ITEMS_PER_PAGE: 10,
-            REFRESH_INTERVAL: 300000, // 5 menit
+            FILE_URL: 'https://cdn.jsdelivr.net/gh/PPICWG/Stock/WKB.xlsx', // Gunakan jsDelivr agar bisa diakses langsung
+            SHEET_NAME: 'WKB',
             TARGET_DATE_CELL: 'J1'
         };
 
+        async function fetchTargetDate() {
+            try {
+                const response = await fetch(CONFIG.FILE_URL);
+                const arrayBuffer = await response.arrayBuffer();
+                const data = new Uint8Array(arrayBuffer);
+                const workbook = XLSX.read(data, { type: "array" });
+
+                const worksheet = workbook.Sheets[CONFIG.SHEET_NAME];
+                const targetDate = worksheet[CONFIG.TARGET_DATE_CELL]?.v || "Tidak ditemukan";
+
+                document.getElementById("tanggalTarget").innerText = targetDate;
+            } catch (error) {
+                console.error("Gagal memuat data:", error);
+                document.getElementById("tanggalTarget").innerText = "Gagal memuat";
+            }
+        }
+
+        fetchTargetDate();
         // User credentials
         const USERS = {
             'admin': { password: 'admin123', role: 'admin', name: 'Administrator' },
@@ -158,32 +173,7 @@
         }
 
         // Data fetching functions
-        async function fetchTargetDate() {
-            try {
-                const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${CONFIG.TARGET_DATE_CELL}?key=${CONFIG.API_KEY}`;
-                const response = await fetch(url);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.values && data.values[0] && data.values[0][0]) {
-                        targetDate = data.values[0][0];
-                    }
-                }
-            } catch (error) {
-                console.error('Error fetching target date:', error);
-                targetDate = new Date().toISOString().split('T')[0];
-            }
-        }
-
-        async function fetchData() {
-            if (isLoading) return;
-            
-            isLoading = true;
-            showLoading();
-            
-            try {
-                // Fetch target date first
-                await fetchTargetDate();
+        
                 
                 // Fetch main data
                 const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${CONFIG.SHEET_NAME}?key=${CONFIG.API_KEY}`;
