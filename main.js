@@ -12,8 +12,8 @@
         // User credentials
         const USERS = {
             'admin': { password: '1', role: 'admin', name: 'Administrator' },
-            'ppic': { password: '4', role: 'manager', name: 'PPIC' },
-            'cs': { password: '2', role: 'staff', name: 'Cold Storage' }
+            'ppic': { password: '4', role: 'ppic', name: 'PPIC' },
+            'cs': { password: '2', role: 'cs', name: 'Cold Storage' }
         };
 
         // Global variables
