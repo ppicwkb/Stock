@@ -1078,7 +1078,7 @@
                             <!-- MC Breakdown Table -->
                             <div class="border-t pt-4">
                                 <div class="flex justify-between items-center mb-3">
-                                    <p class="text-sm font-medium text-gray-700">📊 Breakdown MC per Kode:</p>
+                                    <p class="text-sm font-medium text-gray-700">📊 Breakdown Kode:</p>
                                     <span class="text-xs text-gray-500">Diurutkan berdasarkan jumlah MC</span>
                                 </div>
                                 <div class="overflow-x-auto">
