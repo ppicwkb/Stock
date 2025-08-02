@@ -1,15 +1,19 @@
- const CONFIG = {
-      EXCEL_URL: 'EXCEL_URL: 'https://raw.githubusercontent.com/PPICWG/Stock/main/WKB.xlsx'',
-      ITEMS_PER_PAGE: 10,
-      REFRESH_INTERVAL: 300000 // 5 menit
-    
+
+        // Configuration - GANTI DENGAN DATA GOOGLE SHEETS ANDA
+        const CONFIG = {
+            SHEET_ID: '18ga4stLBiKWujBryPQHUHrUzgYjprFJEKvUWSd3Zcks', // Ganti dengan ID Google Sheets Anda
+            SHEET_NAME: 'WKB', // Ganti dengan nama sheet Anda
+            API_KEY: 'AIzaSyBBY9oqeEjjpVnIXOhdkhR6xuTsCr5gYU8', // Ganti dengan API Key Anda
+            ITEMS_PER_PAGE: 10,
+            REFRESH_INTERVAL: 300000, // 5 menit
+            TARGET_DATE_CELL: 'J1'
         };
 
         // User credentials
         const USERS = {
-            'admin': { password: '1', role: 'admin', name: 'Administrator' },
-            'manager': { password: '2', role: 'manager', name: 'Manager Gudang' },
-            'staff': { password: '3', role: 'staff', name: 'Staff Gudang' }
+            'admin': { password: 'admin123', role: 'admin', name: 'Administrator' },
+            'manager': { password: 'manager123', role: 'manager', name: 'Manager Gudang' },
+            'staff': { password: 'staff123', role: 'staff', name: 'Staff Gudang' }
         };
 
         // Global variables
@@ -154,76 +158,74 @@
             }
         }
 
-        // Fungsi untuk mengambil target date dari sel J1 di sheet 'WKB'
-async function fetchTargetDate() {
-    try {
-        const response = await fetch(CONFIG.EXCEL_URL);
-        const arrayBuffer = await response.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: "array" });
-        const worksheet = workbook.Sheets['WKB']; // Sesuaikan dengan nama sheet
-
-        // Ambil isi dari sel J1
-        const cell = worksheet['J1'];
-        targetDate = cell ? cell.v : new Date().toISOString().split('T')[0];
-
-    } catch (error) {
-        console.error('Error fetching target date:', error);
-        targetDate = new Date().toISOString().split('T')[0];
-    }
-}
-
-// Fungsi utama untuk mengambil dan mengolah data dari Excel
-async function fetchData() {
-    if (isLoading) return;
-
-    isLoading = true;
-    showLoading();
-
-    try {
-        // Ambil target date dulu
-        await fetchTargetDate();
-
-        // Ambil data utama dari Excel
-        const response = await fetch(CONFIG.EXCEL_URL);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const arrayBuffer = await response.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: "array" });
-        const worksheet = workbook.Sheets['WKB'];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '-' });
-
-        if (jsonData.length > 1) {
-            // Buang baris header
-            const dataRows = jsonData.slice(1);
-
-            stockData = dataRows.map(row => {
-                const processedRow = [];
-                for (let i = 0; i < 9; i++) {
-                    processedRow[i] = row[i] || '-';
+        // Data fetching functions
+        async function fetchTargetDate() {
+            try {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${CONFIG.TARGET_DATE_CELL}?key=${CONFIG.API_KEY}`;
+                const response = await fetch(url);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.values && data.values[0] && data.values[0][0]) {
+                        targetDate = data.values[0][0];
+                    }
                 }
-                return processedRow;
-            });
-
-            filteredData = [...stockData];
-            updateUI();
-            setConnectionStatus(true, 'Terhubung');
-
-            console.log(`✅ Data berhasil dimuat: ${stockData.length} baris`);
-        } else {
-            throw new Error('No data found in Excel file');
+            } catch (error) {
+                console.error('Error fetching target date:', error);
+                targetDate = new Date().toISOString().split('T')[0];
+            }
         }
-    } catch (error) {
-        console.error('❌ Error fetching data:', error);
-        setConnectionStatus(false, 'Terputus');
-        showError(error.message);
-    } finally {
-        isLoading = false;
-        hideLoading();
-    }
-}
-           
+
+        async function fetchData() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            showLoading();
+            
+            try {
+                // Fetch target date first
+                await fetchTargetDate();
+                
+                // Fetch main data
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${CONFIG.SHEET_NAME}?key=${CONFIG.API_KEY}`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.values && data.values.length > 1) {
+                    // Process data (skip header row)
+                    stockData = data.values.slice(1).map(row => {
+                        const processedRow = [];
+                        for (let i = 0; i < 9; i++) {
+                            processedRow[i] = row[i] || '-';
+                        }
+                        return processedRow;
+                    });
+                    
+                    filteredData = [...stockData];
+                    updateUI();
+                    setConnectionStatus(true, 'Terhubung');
+                    
+                    console.log(`✅ Data berhasil dimuat: ${stockData.length} baris`);
+                } else {
+                    throw new Error('No data found in sheet');
+                }
+            } catch (error) {
+                console.error('❌ Error fetching data:', error);
+                setConnectionStatus(false, 'Terputus');
+                showError(error.message);
+                
+                // Load sample data as fallback
+                loadSampleData();
+            } finally {
+                isLoading = false;
+                hideLoading();
+            }
+        }
 
         function loadSampleData() {
             console.log('📝 Loading sample data...');
@@ -1646,3 +1648,6 @@ async function fetchData() {
             console.log('🚀 Initializing Dashboard...');
             initAuth();
         });
+    
+
+(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'967af9d7e130e416',t:'MTc1Mzk0MjY4MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();
