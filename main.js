@@ -11,9 +11,9 @@
 
         // User credentials
         const USERS = {
-            'admin': { password: 'admin123', role: 'admin', name: 'Administrator' },
-            'manager': { password: 'manager123', role: 'manager', name: 'Manager Gudang' },
-            'staff': { password: 'staff123', role: 'staff', name: 'Staff Gudang' }
+            'admin': { password: '1', role: 'admin', name: 'Administrator' },
+            'ppic': { password: '4', role: 'manager', name: 'PPIC' },
+            'cs': { password: '2', role: 'staff', name: 'Cold Storage' }
         };
 
         // Global variables
@@ -256,7 +256,7 @@
                     <tr><td colspan="9" class="px-6 py-12 text-center">
                         <div class="flex flex-col items-center">
                             <div class="loading-spinner w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mb-4"></div>
-                            <p class="text-gray-600">Memuat data dari Google Sheets...</p>
+                            <p class="text-gray-600">Memuat data dari PPIC...</p>
                         </div>
                     </td></tr>
                 `;
@@ -274,7 +274,7 @@
                     <tr><td colspan="9" class="px-6 py-12 text-center">
                         <div class="flex flex-col items-center">
                             <i class="fas fa-exclamation-triangle text-yellow-500 text-3xl mb-4"></i>
-                            <p class="text-gray-600 mb-2">Gagal memuat data dari Google Sheets</p>
+                            <p class="text-gray-600 mb-2">Gagal memuat data dari PPIC</p>
                             <p class="text-sm text-gray-500 mb-4">${message}</p>
                             <button onclick="refreshData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
                                 <i class="fas fa-refresh mr-2"></i>Coba Lagi
@@ -1225,7 +1225,7 @@
                 });
                 
                 // Save the PDF
-                doc.save('rekap-kode-per-size-packing-brand.pdf');
+                doc.save('Breakdown kode.pdf');
                 
             } catch (error) {
                 console.error('Error generating PDF:', error);
@@ -1635,7 +1635,7 @@
                 });
                 
                 // Save the PDF
-                doc.save('dashboard-stok-produk.pdf');
+                doc.save('dashboard-stok-wkb.pdf');
                 
             } catch (error) {
                 console.error('Error generating PDF:', error);
