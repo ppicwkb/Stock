@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Stok Produk - Google Sheets</title>
+    <title>Dashboard Stok WKB - PPIC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -94,11 +94,11 @@
             
             <div class="mt-6 pt-6 border-t border-gray-200">
                 <div class="bg-blue-50 rounded-lg p-4">
-                    <h4 class="text-sm font-medium text-blue-800 mb-2">👤 Demo Akun:</h4>
+                    <h4 class="text-sm font-medium text-blue-800 mb-2">🔐 Akses Dashboard Stok:</h4>
                     <div class="text-xs text-blue-600 space-y-1">
-                        <div><strong>Admin:</strong> admin / admin123</div>
-                        <div><strong>Manager:</strong> manager / manager123</div>
-                        <div><strong>Staff:</strong> staff / staff123</div>
+                        <div>• Login sesuai Kebutuhan :</div>
+                        <div><strong>PPIC CS PRODUKSI QC</strong></div>
+                        <div>• Gunakan username dan password yang tersedia.</div>
                     </div>
                 </div>
             </div>
@@ -110,7 +110,7 @@
         <button onclick="toggleSidebar()" class="text-gray-600 hover:text-gray-800">
             <i class="fas fa-bars text-xl"></i>
         </button>
-        <h1 class="text-lg font-bold text-gray-800">📊 Dashboard Stok</h1>
+        <h1 class="text-lg font-bold text-gray-800">📊 Dashboard Stok WKB</h1>
         <div class="w-6"></div>
     </div>
 
@@ -121,7 +121,7 @@
     <div class="sidebar fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-20">
         <div class="p-6 border-b border-gray-200">
             <div class="flex items-center justify-between">
-                <h1 class="text-xl font-bold text-gray-800">📊 Dashboard Stok</h1>
+                <h1 class="text-xl font-bold text-gray-800">📊 Dashboard WKB</h1>
                 <button onclick="closeSidebar()" class="md:hidden text-gray-600 hover:text-gray-800">
                     <i class="fas fa-times text-lg"></i>
                 </button>
@@ -148,7 +148,7 @@
         
         <nav class="mt-6 px-4 space-y-2">
             <a href="#" class="sidebar-item flex items-center px-4 py-3 text-white rounded-lg bg-gradient-to-r from-blue-500 to-purple-600" onclick="showSection('dashboard')">
-                <i class="fas fa-chart-line mr-3"></i>Dashboard Stok
+                <i class="fas fa-chart-line mr-3"></i>Dashboard WKB
             </a>
             <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="showSection('rekap-po')">
                 <i class="fas fa-folder mr-3"></i>Rekap per PO
@@ -163,7 +163,7 @@
                 <i class="fas fa-barcode mr-3"></i>Rekap per Kode
             </a>
             <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="showSection('kode-per-size-brand')">
-                <i class="fas fa-layer-group mr-3"></i>Kode per Size Packing Brand
+                <i class="fas fa-layer-group mr-3"></i>Breakdown
             </a>
             <a href="#" class="sidebar-item flex items-center px-4 py-3 text-gray-700 rounded-lg" onclick="showSection('stok-hari-ini')">
                 <i class="fas fa-calendar-day mr-3"></i>Stok Tanggal Target
@@ -175,8 +175,8 @@
         
         <div class="absolute bottom-4 left-4 right-4">
             <div class="bg-blue-50 p-4 rounded-lg">
-                <p class="text-sm text-blue-600">📡 Data dari Google Sheets</p>
-                <p class="text-xs text-blue-500 mt-1">Sheet: WKB - Auto refresh</p>
+                <p class="text-sm text-blue-600">📡 Data dari PPIC</p>
+                <p class="text-xs text-blue-500 mt-1">WKB - Auto refresh</p>
                 <div class="flex items-center mt-2">
                     <div id="connectionStatus" class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
                     <span class="text-xs text-gray-500" id="connectionText">Terhubung</span>
@@ -190,8 +190,8 @@
         <!-- Dashboard Section -->
         <div id="dashboard-section" class="section">
             <div class="mb-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-2">Dashboard Stok Produk</h2>
-                <p class="text-gray-600">Kelola dan pantau stok produk secara real-time dari Google Sheets</p>
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Dashboard Stok WKB</h2>
+                <p class="text-gray-600">PPIC Team</p>
             </div>
 
             <!-- Quick Stats -->
@@ -366,7 +366,7 @@
                 </div>
                 <div class="bg-white p-4 rounded-lg shadow text-center">
                     <input type="text" id="poSearchInput" placeholder="Cari PO..." class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" onkeyup="filterPOSummary()">
-                    <div class="text-xs text-gray-600 mt-1">Kolom Cari</div>
+                    <div class="text-xs text-gray-600 mt-1">Cari</div>
                 </div>
             </div>
 
@@ -482,8 +482,8 @@
         <!-- Kode per Size Packing Brand Section -->
         <div id="kode-per-size-brand-section" class="section hidden">
             <div class="mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">📦 Kode per Size Packing Brand</h2>
-                <p class="text-gray-600">Analisis kode produk berdasarkan ukuran kemasan dan brand</p>
+                <h2 class="text-2xl font-bold text-gray-800">📦 Breakdown</h2>
+                <p class="text-gray-600">Breakdown Kode</p>
             </div>
             
             <!-- Size Packing Brand Statistics -->
@@ -502,7 +502,7 @@
                 </div>
                 <div class="bg-white p-4 rounded-lg shadow text-center">
                     <input type="text" id="sizePackingSearchInput" placeholder="Cari packing/brand..." class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" onkeyup="filterSizePackingSummary()">
-                    <div class="text-xs text-gray-600 mt-1">Kolom Cari</div>
+                    <div class="text-xs text-gray-600 mt-1">Cari</div>
                 </div>
             </div>
 
@@ -522,8 +522,8 @@
         <!-- Stok Tanggal Target Section -->
         <div id="stok-hari-ini-section" class="section hidden">
             <div class="mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">📦 Stok Tanggal Target</h2>
-                <p class="text-gray-600">Data stok untuk tanggal target yang ditentukan</p>
+                <h2 class="text-2xl font-bold text-gray-800">📦 Stok Masuk Tanggal</h2>
+                <p class="text-gray-600">Data stok untuk tanggal</p>
             </div>
             
             <div class="bg-white p-6 rounded-lg shadow mb-6">
@@ -553,7 +553,7 @@
             <!-- Target Date Data Table -->
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-800">Detail Stok Tanggal Target</h3>
+                    <h3 class="text-lg font-semibold text-gray-800">Detail Stok Tanggal</h3>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full">
@@ -596,5 +596,6 @@
     </div>
 
     <script src="main.js"></script>
+    
 </body>
 </html>
