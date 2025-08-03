@@ -1736,7 +1736,7 @@
         // ===== ENHANCED CONFIGURATION =====
         const CONFIG = {
     VERSION: '49.0.0',
-    JSON_URL: './data.json', // ✅ Data lokal
+    JSON_URL: 'https://ppicwg.github.io/Stock/data.json', // ✅ Data lokal
     ITEMS_PER_PAGE: window.innerWidth <= 768 ? 5 : 10,
     MAX_ITEMS_PER_PAGE: 100,
     AUTO_REFRESH_INTERVAL: 300000, // 5 menit
@@ -2006,7 +2006,7 @@ const DataLoader = {
                 this.updateProgress(elements, 20, 'Fetching data.json...');
             }
 
-                    const response = await fetch('data.json');
+                    const response = await fetch('https://ppicwg.github.io/Stock/data.json');
 
             if (!response.ok) {
                 throw new Error(`JSON file load error: ${response.status} ${response.statusText}`);
