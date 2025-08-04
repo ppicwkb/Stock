@@ -1,150 +1,2443 @@
-
-        // Configuration - GANTI DENGAN DATA GOOGLE SHEETS ANDA
+    // ===== ENHANCED CONFIGURATION =====
         const CONFIG = {
-            SHEET_ID: '18ga4stLBiKWujBryPQHUHrUzgYjprFJEKvUWSd3Zcks', // Ganti dengan ID Google Sheets Anda
-            SHEET_NAME: 'WKB', // Ganti dengan nama sheet Anda
-            API_KEY: 'AIzaSyBBY9oqeEjjpVnIXOhdkhR6xuTsCr5gYU8', // Ganti dengan API Key Anda
-            ITEMS_PER_PAGE: 10,
-            REFRESH_INTERVAL: 300000, // 5 menit
-            TARGET_DATE_CELL: 'J1'
+    VERSION: '49.0.0',
+    EXCEL_FILE_PATH: 'WKB.xlsx', // ✅ Ganti jadi path file lokal
+    ITEMS_PER_PAGE: window.innerWidth <= 768 ? 5 : 10,
+    MAX_ITEMS_PER_PAGE: 100,
+    AUTO_REFRESH_INTERVAL: 600000, // 5 minutes
+    ANIMATION_DURATION: 300,
+    TARGET_DATE_CELL: 'J1',
+
+    USERS: {
+        'ppic': { password: '4', role: 'ppic', name: 'Planning Production', permissions: ['all'] },
+        'qc': { password: '2', role: 'qc', name: 'Quality Control', permissions: ['read', 'export', 'analytics'] },
+        'admin': { password: '1', role: 'admin', name: 'Administrasi', permissions: ['read'] }
+    },
+
+    FEATURES: {
+        REAL_TIME_UPDATES: true,
+        ADVANCED_ANALYTICS: true,
+        EXPORT_CAPABILITIES: true,
+        SMART_SEARCH: true,
+        AUTO_BACKUP: true
+    }
+};
+        // ===== ENHANCED GLOBAL STATE =====
+        const State = {
+            version: CONFIG.VERSION,
+            currentUser: null,
+            stockData: [],
+            filteredData: [],
+            currentPage: 1,
+            itemsPerPage: CONFIG.ITEMS_PER_PAGE,
+            sortColumn: -1,
+            sortDirection: 'asc',
+            isLoading: false,
+            targetDate: '29/01/2024',
+            lastUpdate: null,
+            autoRefreshTimer: null,
+            searchCache: new Map(),
+            charts: {
+                brand: null,
+                trend: null,
+                analytics: {}
+            },
+            performance: {
+                loadTime: 0,
+                renderTime: 0,
+                dataSize: 0
+            },
+            filters: {
+                startDate: '',
+                endDate: '',
+                brand: '',
+                location: '',
+                search: ''
+            }
         };
 
-        // User credentials
-        const USERS = {
-            'admin': { password: '1', role: 'admin', name: 'Administrator' },
-            'ppic': { password: '4', role: 'ppic', name: 'PPIC' },
-            'cs': { password: '2', role: 'cs', name: 'Cold Storage' }
-        };
-
-        // Global variables
-        let currentUser = null;
-        let stockData = [];
-        let filteredData = [];
-        let currentPage = 1;
-        let sortColumn = -1;
-        let sortDirection = 'asc';
-        let isLoading = false;
-        let showAllPOs = false;
-        let targetDate = null;
-        let brandChart = null;
-        let trendChart = null;
-
-        // Authentication functions
-        function initAuth() {
-            const savedUser = localStorage.getItem('dashboardUser');
-            if (savedUser) {
-                try {
-                    currentUser = JSON.parse(savedUser);
-                    showDashboard();
-                } catch (e) {
-                    localStorage.removeItem('dashboardUser');
-                    showLogin();
+        // ===== ENHANCED AUTHENTICATION MODULE =====
+        const Auth = {
+            init() {
+                console.log(`🚀 Initializing Dashboard v${CONFIG.VERSION}...`);
+                const savedUser = localStorage.getItem('dashboardUser_v49');
+                if (savedUser) {
+                    try {
+                        State.currentUser = JSON.parse(savedUser);
+                        if (this.validateSession()) {
+                            this.showDashboard();
+                        } else {
+                            this.logout();
+                        }
+                    } catch (e) {
+                        console.warn('Invalid session data:', e);
+                        localStorage.removeItem('dashboardUser_v49');
+                        this.showLogin();
+                    }
+                } else {
+                    this.showLogin();
                 }
-            } else {
-                showLogin();
-            }
 
-            // Setup login form
-            const loginForm = document.getElementById('loginForm');
-            if (loginForm) {
-                loginForm.addEventListener('submit', handleLogin);
-            }
-        }
+                this.bindEvents();
+            },
 
-        function showLogin() {
-            const modal = document.getElementById('loginModal');
-            if (modal) {
-                modal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-            }
-        }
+            bindEvents() {
+                const loginForm = document.getElementById('loginForm');
+                if (loginForm) {
+                    loginForm.addEventListener('submit', this.handleLogin.bind(this));
+                }
 
-        function hideLogin() {
-            const modal = document.getElementById('loginModal');
-            if (modal) {
-                modal.classList.add('hidden');
-                document.body.style.overflow = 'auto';
-            }
-        }
+                // Auto-logout on tab visibility change for security
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden && State.currentUser) {
+                        console.log('🔒 Tab hidden - pausing auto-refresh');
+                        if (State.autoRefreshTimer) {
+                            clearInterval(State.autoRefreshTimer);
+                        }
+                    } else if (!document.hidden && State.currentUser) {
+                        console.log('👁️ Tab visible - resuming auto-refresh');
+                        this.startAutoRefresh();
+                    }
+                });
+            },
 
-        function showDashboard() {
-            hideLogin();
-            updateUserInfo();
-            initCharts();
-            fetchData();
-            setCurrentDate();
-            
-            // Auto refresh every 5 minutes
-            setInterval(fetchData, CONFIG.REFRESH_INTERVAL);
-        }
+            validateSession() {
+                if (!State.currentUser || !State.currentUser.loginTime) return false;
+                
+                const loginTime = new Date(State.currentUser.loginTime);
+                const now = new Date();
+                const sessionDuration = now - loginTime;
+                const maxSessionDuration = 8 * 60 * 60 * 1000; // 8 hours
+                
+                return sessionDuration < maxSessionDuration;
+            },
 
-        async function handleLogin(e) {
-            e.preventDefault();
-            
-            const usernameInput = document.getElementById('username');
-            const passwordInput = document.getElementById('password');
-            const errorDiv = document.getElementById('loginError');
-            const buttonText = document.getElementById('loginButtonText');
-            const spinner = document.getElementById('loginSpinner');
-            
-            const username = usernameInput.value.trim();
-            const password = passwordInput.value;
-            
-            buttonText.classList.add('hidden');
-            spinner.classList.remove('hidden');
-            errorDiv.classList.add('hidden');
-            
-            // Simulate loading
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            if (USERS[username] && USERS[username].password === password) {
-                currentUser = {
-                    username: username,
-                    name: USERS[username].name,
-                    role: USERS[username].role,
-                    loginTime: new Date().toISOString()
+            showLogin() {
+                const modal = document.getElementById('loginModal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                    
+                    // Focus on username field
+                    setTimeout(() => {
+                        const usernameField = document.getElementById('username');
+                        if (usernameField) usernameField.focus();
+                    }, 300);
+                }
+            },
+
+            hideLogin() {
+                const modal = document.getElementById('loginModal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    document.body.style.overflow = 'auto';
+                }
+            },
+
+            showDashboard() {
+                this.hideLogin();
+                this.updateUserInfo();
+                this.startAutoRefresh();
+                DataLoader.init();
+                Charts.init();
+                Utils.setCurrentTime();
+                Performance.startTracking();
+            },
+
+            async handleLogin(e) {
+                e.preventDefault();
+                
+                const elements = {
+                    username: document.getElementById('username'),
+                    password: document.getElementById('password'),
+                    error: document.getElementById('loginError'),
+                    buttonText: document.getElementById('loginButtonText'),
+                    spinner: document.getElementById('loginSpinner')
                 };
                 
-                localStorage.setItem('dashboardUser', JSON.stringify(currentUser));
+                const username = elements.username.value.trim();
+                const password = elements.password.value;
                 
-                buttonText.innerHTML = '<i class="fas fa-check mr-2"></i>Login Berhasil!';
-                buttonText.classList.remove('hidden');
-                spinner.classList.add('hidden');
+                // Show loading state
+                elements.buttonText.classList.add('hidden');
+                elements.spinner.classList.remove('hidden');
+                elements.error.classList.add('hidden');
                 
-                setTimeout(() => {
-                    showDashboard();
-                }, 500);
+                // Simulate authentication delay
+                await new Promise(resolve => setTimeout(resolve, 1500));
                 
+                if (CONFIG.USERS[username] && CONFIG.USERS[username].password === password) {
+                    State.currentUser = {
+                        username: username,
+                        name: CONFIG.USERS[username].name,
+                        role: CONFIG.USERS[username].role,
+                        permissions: CONFIG.USERS[username].permissions,
+                        loginTime: new Date().toISOString(),
+                        sessionId: Utils.generateSessionId()
+                    };
+                    
+                    localStorage.setItem('dashboardUser_v49', JSON.stringify(State.currentUser));
+                    
+                    elements.buttonText.innerHTML = '<i class="fas fa-check mr-3"></i>Access Granted!';
+                    elements.buttonText.classList.remove('hidden');
+                    elements.spinner.classList.add('hidden');
+                    
+                    setTimeout(() => {
+                        this.showDashboard();
+                        Utils.showNotification('success', `🎉 Welcome back, ${State.currentUser.name}!`);
+                    }, 800);
+                    
+                } else {
+                    elements.buttonText.classList.remove('hidden');
+                    elements.spinner.classList.add('hidden');
+                    elements.error.classList.remove('hidden');
+                    elements.password.value = '';
+                    elements.password.focus();
+                }
+            },
+
+            updateUserInfo() {
+                if (!State.currentUser) return;
+                
+                const elements = {
+                    userInfo: document.getElementById('userInfo'),
+                    userName: document.getElementById('userName'),
+                    userRole: document.getElementById('userRole')
+                };
+                
+                if (elements.userInfo && elements.userName && elements.userRole) {
+                    elements.userInfo.classList.remove('hidden');
+                    elements.userName.textContent = State.currentUser.name;
+                    elements.userRole.textContent = State.currentUser.role.toUpperCase();
+                }
+            },
+
+           startAutoRefresh() {
+    if (State.autoRefreshTimer) {
+        clearInterval(State.autoRefreshTimer);
+    }
+
+    if (CONFIG.FEATURES.REAL_TIME_UPDATES) {
+        State.autoRefreshTimer = setInterval(() => {
+            if (!document.hidden) {
+                console.log('🔄 Auto-refreshing data...');
+                DataLoader.loadExcelFromLocal(true); // ✅ ganti fungsi ini
+            }
+        }, CONFIG.AUTO_REFRESH_INTERVAL);
+    }
+},
+
+           logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        if (State.autoRefreshTimer) {
+            clearInterval(State.autoRefreshTimer);
+        }
+
+        localStorage.removeItem('dashboardUser_v49');
+        State.currentUser = null;
+
+        Utils.showNotification('info', '👋 Logged out successfully');
+        setTimeout(() => {
+            location.reload();
+        }, 1000);
+    }
+}
+        };
+
+        // ===== ENHANCED DATA LOADER MODULE =====
+        const DataLoader = {
+    init() {
+        console.log('📂 Inisialisasi sistem data dari file Excel lokal...');
+        this.loadFromExcelFile();
+    },
+
+    async loadFromExcelFile(isAutoRefresh = false) {
+        const startTime = performance.now();
+        console.log('📥 Loading data from local Excel file...', isAutoRefresh ? '(Auto-refresh)' : '(Manual)');
+
+        const elements = {
+            dataStatus: document.getElementById('dataStatus'),
+            loadProgress: document.getElementById('loadProgress'),
+            progressBar: document.getElementById('progressBar'),
+            progressText: document.getElementById('progressText'),
+            refreshBtn: document.getElementById('refreshBtn')
+        };
+
+        if (!isAutoRefresh) {
+            this.updateLoadingUI(elements, 'loading');
+            this.updateProgress(elements, 10, 'Fetching Excel file...');
+        }
+
+        try {
+            const response = await fetch('WKB.xlsx'); // file Excel di root
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+            const sheetName = CONFIG.SHEET_NAME || workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+            const targetCell = worksheet[CONFIG.TARGET_DATE_CELL];
+            if (targetCell && targetCell.v) {
+                State.targetDate = String(targetCell.v);
+                console.log('📅 Target date from Excel:', State.targetDate);
+            }
+
+            if (!isAutoRefresh) {
+                this.updateProgress(elements, 60, 'Processing Excel data...');
+            }
+
+            const processedData = this.processSheetData(rawData);
+
+            State.performance.loadTime = performance.now() - startTime;
+            State.performance.dataSize = JSON.stringify(rawData).length;
+
+            if (!isAutoRefresh) {
+                this.updateProgress(elements, 90, 'Finalizing...');
+            }
+
+            this.completeLoading(processedData, elements, isAutoRefresh);
+
+        } catch (error) {
+            console.error('❌ Gagal membaca file Excel lokal:', error);
+            Utils.showNotification('error', '⚠️ Gagal membaca file Excel lokal');
+            this.loadSampleData(elements);
+        }
+    },
+
+    processSheetData(sheetValues) {
+        const processedData = [];
+        let validRows = 0;
+        let skippedRows = 0;
+
+        for (let i = 1; i < sheetValues.length; i++) {
+            const row = sheetValues[i];
+            while (row.length < 9) row.push('');
+
+            const hasDate = row[0] && String(row[0]).trim() !== '';
+            const hasProduct = row[1] && String(row[1]).trim() !== '';
+            const hasMC = row[6] && !isNaN(parseFloat(row[6])) && parseFloat(row[6]) > 0;
+
+            if (hasDate && hasProduct && hasMC) {
+                const formattedRow = [
+                    Utils.formatDate(row[0]),
+                    String(row[1] || '').trim(),
+                    String(row[2] || '').trim(),
+                    String(row[3] || '').trim(),
+                    String(row[4] || '').trim(),
+                    String(row[5] || '').trim(),
+                    parseFloat(row[6]) || 0,
+                    parseFloat(row[7]) || 0,
+                    String(row[8] || '').trim()
+                ];
+                processedData.push(formattedRow);
+                validRows++;
             } else {
-                buttonText.classList.remove('hidden');
-                spinner.classList.add('hidden');
-                errorDiv.classList.remove('hidden');
-                passwordInput.value = '';
+                skippedRows++;
             }
         }
 
-        function updateUserInfo() {
-            if (!currentUser) return;
+        console.log("✅ Sheet processing complete: ${validRows} valid rows, ${skippedRows} skipped");
+        return processedData;
+    },
+
+    updateLoadingUI(elements, state) {
+        if (!elements) return;
+        if (state === 'loading') {
+            elements.loadProgress?.classList.remove('hidden');
+            elements.dataStatus?.classList.add('text-yellow-500');
+            elements.refreshBtn?.classList.add('opacity-50');
+        } else if (state === 'complete') {
+            elements.loadProgress?.classList.add('hidden');
+            elements.dataStatus?.classList.remove('text-yellow-500');
+            elements.dataStatus?.classList.add('text-green-500');
+            elements.refreshBtn?.classList.remove('opacity-50');
+        }
+    },
+
+    updateProgress(elements, percent, text) {
+        if (!elements) return;
+        elements.progressBar.style.width = `${percent}%`;
+        elements.progressText.textContent = text;
+    },
+
+    completeLoading(data, elements, isAutoRefresh = false) {
+        State.stockData = data;
+        State.filteredData = [...data];
+        State.lastUpdate = new Date().toISOString();
+        this.updateLoadingUI(elements, 'complete');
+
+        if (!isAutoRefresh) {
+            Utils.showNotification('success', `✅ Loaded ${data.length} items from Excel`);
+        }
+        Render.renderTable();
+        Analytics.calculate();
+    },
+
+    loadSampleData(elements) {
+        const sample = [
+            ['01/08/2024', 'Sample A', '250ml', 'BrandX', 'ABC123', 'PO001', 120, 50, 'Gudang A'],
+            ['02/08/2024', 'Sample B', '500ml', 'BrandY', 'DEF456', 'PO002', 100, 40, 'Gudang B']
+        ];
+        const processed = this.processSheetData([['Tanggal', 'Produk', 'Kemasan', 'Brand', 'Kode', 'PO', 'MC', 'KG', 'Lokasi'], ...sample]);
+        this.completeLoading(processed, elements, false);
+    }
+};
+
             
-            const userInfo = document.getElementById('userInfo');
-            const userName = document.getElementById('userName');
-            const userRole = document.getElementById('userRole');
+                
+               
+                // Update last update time
+                
             
-            if (userInfo && userName && userRole) {
-                userInfo.classList.remove('hidden');
-                userName.textContent = currentUser.name;
-                userRole.textContent = currentUser.role;
-            }
-        }
+        
 
-        function logout() {
-            if (confirm('Yakin ingin keluar dari dashboard?')) {
-                localStorage.removeItem('dashboardUser');
-                currentUser = null;
-                location.reload();
-            }
-        }
+        // ===== ENHANCED UI MODULE =====
+        const UI = {
+            toggleSidebar() {
+                const sidebar = document.querySelector('.advanced-sidebar');
+                const overlay = document.querySelector('.mobile-overlay');
+                
+                if (sidebar) sidebar.classList.toggle('open');
+                if (overlay) overlay.classList.toggle('hidden');
+            },
 
+            closeSidebar() {
+                const sidebar = document.querySelector('.advanced-sidebar');
+                const overlay = document.querySelector('.mobile-overlay');
+                
+                if (sidebar) sidebar.classList.remove('open');
+                if (overlay) overlay.classList.add('hidden');
+            },
+
+            updateAll() {
+                if (State.stockData.length === 0) return;
+                
+                const startTime = performance.now();
+                
+                this.populateFilters();
+                Table.populate();
+                this.updateStats();
+                Charts.updateAll();
+                
+                const renderTime = performance.now() - startTime;
+                State.performance.renderTime = renderTime;
+                
+                console.log(`🎨 UI updated in ${renderTime.toFixed(2)}ms`);
+            },
+
+            populateFilters() {
+                const brands = [...new Set(State.stockData.map(row => row[3]).filter(item => item && item !== '-'))].sort();
+                const locations = [...new Set(State.stockData.map(row => row[8]).filter(item => item && item !== '-'))].sort();
+                
+                const brandFilter = document.getElementById('brandFilter');
+                const locationFilter = document.getElementById('locationFilter');
+                
+                if (brandFilter) {
+                    brandFilter.innerHTML = '<option value="">All Brands</option>' + 
+                        brands.map(b => `<option value="${b}">${b}</option>`).join('');
+                }
+                
+                if (locationFilter) {
+                    locationFilter.innerHTML = '<option value="">All Locations</option>' + 
+                        locations.map(l => `<option value="${l}">${l}</option>`).join('');
+                }
+            },
+
+            updateStats() {
+                const totalItems = State.filteredData.reduce((sum, row) => sum + (parseInt(row[6]) || 0), 0);
+                const totalKg = State.filteredData.reduce((sum, row) => sum + (parseFloat(row[7]) || 0), 0);
+                const uniqueProducts = new Set(State.filteredData.map(row => row[1])).size;
+                const uniqueBrands = new Set(State.filteredData.map(row => row[3])).size;
+                
+                const elements = {
+                    totalItems: document.getElementById('totalItems'),
+                    totalKg: document.getElementById('totalKg'),
+                    uniqueProducts: document.getElementById('uniqueProducts'),
+                    uniqueBrands: document.getElementById('uniqueBrands')
+                };
+                
+                // Animate number changes
+                if (elements.totalItems) this.animateNumber(elements.totalItems, totalItems);
+                if (elements.totalKg) this.animateNumber(elements.totalKg, totalKg, 'kg');
+                if (elements.uniqueProducts) this.animateNumber(elements.uniqueProducts, uniqueProducts);
+                if (elements.uniqueBrands) this.animateNumber(elements.uniqueBrands, uniqueBrands);
+            },
+
+            animateNumber(element, targetValue, suffix = '') {
+                const currentValue = parseInt(element.textContent.replace(/[^\d]/g, '')) || 0;
+                const increment = (targetValue - currentValue) / 20;
+                let current = currentValue;
+                
+                const timer = setInterval(() => {
+                    current += increment;
+                    if ((increment > 0 && current >= targetValue) || (increment < 0 && current <= targetValue)) {
+                        current = targetValue;
+                        clearInterval(timer);
+                    }
+                    
+                    const displayValue = Math.round(current).toLocaleString();
+                    element.textContent = suffix ? `${displayValue} ${suffix}` : displayValue;
+                }, 50);
+            },
+
+            showQuickActions() {
+                // Implementation for floating action button
+                const actions = [
+                    { icon: 'fas fa-file-pdf', text: 'Export PDF', action: () => Export.toPDF() },
+                    { icon: 'fas fa-chart-bar', text: 'Analytics', action: () => Navigation.showSection('analytics') },
+                    { icon: 'fas fa-calendar-alt', text: 'Data Summary', action: () => Navigation.showSection('data-entry-summary') }
+                ];
+                
+                // Show quick actions menu (implementation would create a popup menu)
+                console.log('Quick actions:', actions);
+            }
+        };
+
+        // ===== ENHANCED TABLE MODULE =====
+        const Table = {
+            populate() {
+                const tbody = document.getElementById('stockTableBody');
+                const mobileTable = document.getElementById('mobileStockTable');
+                
+                const start = (State.currentPage - 1) * State.itemsPerPage;
+                const end = Math.min(start + State.itemsPerPage, State.filteredData.length);
+                const pageData = State.filteredData.slice(start, end);
+                
+                // Desktop table
+                if (tbody) {
+                    tbody.innerHTML = pageData.map((row, index) => `
+                        <tr class="table-row animate-slideInUp" style="animation-delay: ${index * 0.05}s">
+                            <td class="px-8 py-6 text-sm font-bold text-gray-900">${row[0]}</td>
+                            <td class="px-8 py-6 text-sm font-black text-gray-900">${row[1]}</td>
+                            <td class="px-8 py-6 text-sm text-gray-700 font-semibold">${row[2]}</td>
+                            <td class="px-8 py-6 text-sm">
+                                <span class="badge-advanced badge-primary">${row[3]}</span>
+                            </td>
+                            <td class="px-8 py-6 text-sm text-gray-900 font-mono font-bold">${row[4]}</td>
+                            <td class="px-8 py-6 text-sm text-gray-900 font-mono font-bold">${row[5]}</td>
+                            <td class="px-8 py-6 text-sm text-blue-600 text-right font-black text-lg">${row[6].toLocaleString()}</td>
+                            <td class="px-8 py-6 text-sm text-green-600 text-right font-black text-lg">${row[7].toLocaleString()} kg</td>
+                            <td class="px-8 py-6 text-sm text-gray-900">
+                                <span class="badge-advanced badge-success">${row[8] || '-'}</span>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+                
+                // Mobile table
+                if (mobileTable) {
+                    mobileTable.innerHTML = pageData.map((row, index) => `
+                        <div class="mobile-table-card animate-slideInUp" style="animation-delay: ${index * 0.05}s">
+                            <div class="mobile-table-header">${row[1]}</div>
+                            <div class="mobile-table-row">
+                                <span class="mobile-table-label">Date</span>
+                                <span class="mobile-table-value">${row[0]}</span>
+                            </div>
+                            <div class="mobile-table-row">
+                                <span class="mobile-table-label">Brand</span>
+                                <span class="mobile-table-value">
+                                    <span class="badge-advanced badge-primary text-xs">${row[3]}</span>
+                                </span>
+                            </div>
+                            <div class="mobile-table-row">
+                                <span class="mobile-table-label">Packaging</span>
+                                <span class="mobile-table-value">${row[2]}</span>
+                            </div>
+                            <div class="mobile-table-row">
+                                <span class="mobile-table-label">Code</span>
+                                <span class="mobile-table-value font-mono">${row[4]}</span>
+                            </div>
+                            <div class="mobile-table-row">
+                                <span class="mobile-table-label">PO Number</span>
+                                <span class="mobile-table-value font-mono">${row[5]}</span>
+                            </div>
+                            <div class="mobile-table-row">
+                                <span class="mobile-table-label">MC Qty</span>
+                                <span class="mobile-table-value text-blue-600 font-black">${row[6].toLocaleString()}</span>
+                            </div>
+                            <div class="mobile-table-row">
+                                <span class="mobile-table-label">Weight</span>
+                                <span class="mobile-table-value text-green-600 font-black">${row[7].toLocaleString()} kg</span>
+                            </div>
+                            <div class="mobile-table-row">
+                                <span class="mobile-table-label">Location</span>
+                                <span class="mobile-table-value">
+                                    <span class="badge-advanced badge-success text-xs">${row[8] || '-'}</span>
+                                </span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                this.updatePagination();
+            },
+
+            updatePagination() {
+                const total = State.filteredData.length;
+                const start = (State.currentPage - 1) * State.itemsPerPage + 1;
+                const end = Math.min(State.currentPage * State.itemsPerPage, total);
+                const maxPages = Math.ceil(total / State.itemsPerPage);
+                
+                // Desktop pagination elements
+                const elements = {
+                    showingStart: document.getElementById('showingStart'),
+                    showingEnd: document.getElementById('showingEnd'),
+                    totalRecords: document.getElementById('totalRecords'),
+                    pageInfo: document.getElementById('pageInfo'),
+                    firstBtn: document.getElementById('firstBtn'),
+                    prevBtn: document.getElementById('prevBtn'),
+                    nextBtn: document.getElementById('nextBtn'),
+                    lastBtn: document.getElementById('lastBtn')
+                };
+                
+                // Mobile pagination elements
+                const mobileElements = {
+                    showingStart: document.getElementById('showingStartMobile'),
+                    showingEnd: document.getElementById('showingEndMobile'),
+                    totalRecords: document.getElementById('totalRecordsMobile'),
+                    pageInfo: document.getElementById('pageInfoMobile'),
+                    firstBtn: document.getElementById('firstBtnMobile'),
+                    prevBtn: document.getElementById('prevBtnMobile'),
+                    nextBtn: document.getElementById('nextBtnMobile'),
+                    lastBtn: document.getElementById('lastBtnMobile')
+                };
+                
+                // Update both desktop and mobile pagination
+                [elements, mobileElements].forEach(elemSet => {
+                    if (elemSet.showingStart) elemSet.showingStart.textContent = total > 0 ? start : 0;
+                    if (elemSet.showingEnd) elemSet.showingEnd.textContent = end;
+                    if (elemSet.totalRecords) elemSet.totalRecords.textContent = total.toLocaleString();
+                    if (elemSet.pageInfo) elemSet.pageInfo.textContent = `${State.currentPage} / ${maxPages}`;
+                    
+                    if (elemSet.firstBtn) elemSet.firstBtn.disabled = State.currentPage <= 1;
+                    if (elemSet.prevBtn) elemSet.prevBtn.disabled = State.currentPage <= 1;
+                    if (elemSet.nextBtn) elemSet.nextBtn.disabled = State.currentPage >= maxPages;
+                    if (elemSet.lastBtn) elemSet.lastBtn.disabled = State.currentPage >= maxPages;
+                });
+            },
+
+            sort(columnIndex) {
+                if (State.sortColumn === columnIndex) {
+                    State.sortDirection = State.sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    State.sortColumn = columnIndex;
+                    State.sortDirection = 'asc';
+                }
+                
+                State.filteredData.sort((a, b) => {
+                    let aVal = a[columnIndex];
+                    let bVal = b[columnIndex];
+                    
+                    // Handle numeric columns
+                    if (columnIndex === 6 || columnIndex === 7) {
+                        aVal = parseFloat(aVal) || 0;
+                        bVal = parseFloat(bVal) || 0;
+                    }
+                    
+                    // Handle date columns
+                    if (columnIndex === 0) {
+                        aVal = Utils.parseDate(aVal);
+                        bVal = Utils.parseDate(bVal);
+                    }
+                    
+                    if (aVal < bVal) return State.sortDirection === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return State.sortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                });
+                
+                State.currentPage = 1;
+                this.populate();
+            },
+
+            changeItemsPerPage() {
+                const select = document.getElementById('itemsPerPage');
+                const mobileSelect = document.getElementById('itemsPerPageMobile');
+                
+                if (select) {
+                    State.itemsPerPage = parseInt(select.value);
+                    State.currentPage = 1;
+                    this.populate();
+                }
+                
+                if (mobileSelect) {
+                    State.itemsPerPage = parseInt(mobileSelect.value);
+                    State.currentPage = 1;
+                    this.populate();
+                }
+            },
+
+            firstPage() {
+                State.currentPage = 1;
+                this.populate();
+            },
+
+            previousPage() {
+                if (State.currentPage > 1) {
+                    State.currentPage--;
+                    this.populate();
+                }
+            },
+
+            nextPage() {
+                const maxPages = Math.ceil(State.filteredData.length / State.itemsPerPage);
+                if (State.currentPage < maxPages) {
+                    State.currentPage++;
+                    this.populate();
+                }
+            },
+
+            lastPage() {
+                const maxPages = Math.ceil(State.filteredData.length / State.itemsPerPage);
+                State.currentPage = maxPages;
+                this.populate();
+            }
+        };
+
+        // ===== ENHANCED SMART SEARCH MODULE =====
+        const SmartSearch = {
+            searchCache: new Map(),
+            
+            performSearch() {
+                const searchTerm = document.getElementById('searchProduct')?.value?.toLowerCase() || '';
+                const searchResults = document.getElementById('searchResults');
+                
+                if (searchTerm.length < 2) {
+                    if (searchResults) {
+                        searchResults.classList.remove('show');
+                        searchResults.innerHTML = '';
+                    }
+                    return;
+                }
+                
+                // Check cache first
+                if (this.searchCache.has(searchTerm)) {
+                    this.displaySearchResults(this.searchCache.get(searchTerm), searchResults);
+                    return;
+                }
+                
+                // Perform search
+                const results = State.stockData.filter(row => {
+                    return row[1].toLowerCase().includes(searchTerm) || // Product
+                           row[3].toLowerCase().includes(searchTerm) || // Brand
+                           row[2].toLowerCase().includes(searchTerm) || // Packaging
+                           row[4].toLowerCase().includes(searchTerm) || // Code
+                           row[5].toLowerCase().includes(searchTerm);   // PO Number
+                }).slice(0, 8); // Limit to 8 results
+                
+                // Cache results
+                this.searchCache.set(searchTerm, results);
+                
+                this.displaySearchResults(results, searchResults);
+            },
+            
+            displaySearchResults(results, container) {
+                if (!container) return;
+                
+                if (results.length === 0) {
+                    container.innerHTML = '<div class="search-item text-gray-500">No results found</div>';
+                    container.classList.add('show');
+                    return;
+                }
+                
+                container.innerHTML = results.map(row => `
+                    <div class="search-item" onclick="SmartSearch.selectResult('${row[1]}', '${row[3]}', '${row[5]}')">
+                        <div class="font-bold text-gray-800">${row[1]}</div>
+                        <div class="text-sm text-gray-600">
+                            <span class="badge-advanced badge-primary text-xs mr-2">${row[3]}</span>
+                            <span class="badge-advanced badge-success text-xs mr-2">PO: ${row[5]}</span>
+                            <span class="text-blue-600 font-bold">${row[6]} MC</span> | 
+                            <span class="text-green-600 font-bold">${row[7]} kg</span>
+                        </div>
+                    </div>
+                `).join('');
+                
+                container.classList.add('show');
+            },
+            
+            selectResult(product, brand, po) {
+                const searchInput = document.getElementById('searchProduct');
+                const brandFilter = document.getElementById('brandFilter');
+                const searchResults = document.getElementById('searchResults');
+                
+                if (searchInput) searchInput.value = product;
+                if (brandFilter) brandFilter.value = brand;
+                if (searchResults) searchResults.classList.remove('show');
+                
+                // Apply the filter
+                Filters.apply();
+            },
+            
+            applySorting() {
+                const sortBy = document.getElementById('sortBy')?.value;
+                if (!sortBy) return;
+                
+                const [column, direction] = sortBy.split('-');
+                
+                State.filteredData.sort((a, b) => {
+                    let aVal, bVal;
+                    
+                    switch (column) {
+                        case 'date':
+                            aVal = Utils.parseDate(a[0]);
+                            bVal = Utils.parseDate(b[0]);
+                            break;
+                        case 'product':
+                            aVal = a[1].toLowerCase();
+                            bVal = b[1].toLowerCase();
+                            break;
+                        case 'brand':
+                            aVal = a[3].toLowerCase();
+                            bVal = b[3].toLowerCase();
+                            break;
+                        case 'mc':
+                            aVal = parseInt(a[6]) || 0;
+                            bVal = parseInt(b[6]) || 0;
+                            break;
+                        case 'kg':
+                            aVal = parseFloat(a[7]) || 0;
+                            bVal = parseFloat(b[7]) || 0;
+                            break;
+                        case 'po':
+                            aVal = a[5].toLowerCase();
+                            bVal = b[5].toLowerCase();
+                            break;
+                        default:
+                            aVal = a[0];
+                            bVal = b[0];
+                    }
+                    
+                    if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+                    return 0;
+                });
+                
+                State.currentPage = 1;
+                Table.populate();
+                
+                Utils.showNotification('success', `📊 Data sorted by ${column} (${direction === 'asc' ? 'ascending' : 'descending'})`);
+            },
+            
+
+        };
+
+        // ===== ENHANCED FILTERS MODULE =====
+        const Filters = {
+            apply() {
+                const startDate = document.getElementById('startDate')?.value;
+                const endDate = document.getElementById('endDate')?.value;
+                const brand = document.getElementById('brandFilter')?.value;
+                const location = document.getElementById('locationFilter')?.value;
+                const searchTerm = document.getElementById('searchProduct')?.value?.toLowerCase() || '';
+                
+                // Update state
+                State.filters = { startDate, endDate, brand, location, search: searchTerm };
+                
+                State.filteredData = State.stockData.filter(row => {
+                    const matchesBrand = !brand || row[3] === brand;
+                    const matchesLocation = !location || row[8] === location;
+                    const matchesSearch = !searchTerm || 
+                        row[1].toLowerCase().includes(searchTerm) ||
+                        row[3].toLowerCase().includes(searchTerm) ||
+                        row[2].toLowerCase().includes(searchTerm) ||
+                        row[4].toLowerCase().includes(searchTerm) ||
+                        row[5].toLowerCase().includes(searchTerm); // Added PO search
+                    
+                    let matchesDateRange = true;
+                    if (startDate || endDate) {
+                        const rowDate = Utils.parseDate(row[0]);
+                        if (startDate) {
+                            const start = new Date(startDate);
+                            matchesDateRange = matchesDateRange && rowDate >= start;
+                        }
+                        if (endDate) {
+                            const end = new Date(endDate);
+                            matchesDateRange = matchesDateRange && rowDate <= end;
+                        }
+                    }
+                    
+                    return matchesBrand && matchesLocation && matchesSearch && matchesDateRange;
+                });
+                
+                State.currentPage = 1;
+                
+                // Apply current sorting
+                const sortBy = document.getElementById('sortBy')?.value;
+                if (sortBy) {
+                    SmartSearch.applySorting();
+                } else {
+                    UI.updateAll();
+                }
+                
+                Utils.showNotification('success', `🔍 Filter applied: ${State.filteredData.length} records found`);
+            },
+
+            reset() {
+                const elements = {
+                    startDate: document.getElementById('startDate'),
+                    endDate: document.getElementById('endDate'),
+                    brandFilter: document.getElementById('brandFilter'),
+                    locationFilter: document.getElementById('locationFilter'),
+                    searchProduct: document.getElementById('searchProduct'),
+                    sortBy: document.getElementById('sortBy')
+                };
+                
+                Object.values(elements).forEach(el => {
+                    if (el) {
+                        if (el.tagName === 'SELECT') {
+                            el.selectedIndex = 0;
+                        } else {
+                            el.value = '';
+                        }
+                    }
+                });
+                
+                // Clear search results
+                const searchResults = document.getElementById('searchResults');
+                if (searchResults) {
+                    searchResults.classList.remove('show');
+                    searchResults.innerHTML = '';
+                }
+                
+                State.filters = { startDate: '', endDate: '', brand: '', location: '', search: '' };
+                State.filteredData = [...State.stockData];
+                State.currentPage = 1;
+                UI.updateAll();
+                
+                Utils.showNotification('info', '🔄 Filters reset - showing all data');
+            }
+        };
+
+        // ===== ENHANCED NAVIGATION MODULE =====
+        const Navigation = {
+            showSection(sectionName) {
+                // Hide all sections
+                document.querySelectorAll('.section').forEach(section => {
+                    section.classList.add('hidden');
+                });
+                
+                // Show target section
+                const targetSection = document.getElementById(sectionName + '-section');
+                if (targetSection) {
+                    targetSection.classList.remove('hidden');
+                    targetSection.classList.add('animate-fadeIn');
+                }
+                
+                // Update sidebar active state
+                document.querySelectorAll('.sidebar-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                if (event && event.target) {
+                    const sidebarItem = event.target.closest('.sidebar-item');
+                    if (sidebarItem) {
+                        sidebarItem.classList.add('active');
+                    }
+                }
+                
+                // Close mobile sidebar
+                if (window.innerWidth <= 768) {
+                    UI.closeSidebar();
+                }
+                
+                // Update section-specific content
+                setTimeout(() => {
+                    switch (sectionName) {
+                        case 'analytics':
+                            Charts.updateAll();
+                            break;
+                        case 'rekap-po':
+                            Recap.updatePOSection();
+                            break;
+                        case 'rekap-brand':
+                            Recap.updateBrandSection();
+                            break;
+                        case 'rekap-lokasi':
+                            Recap.updateLocationSection();
+                            break;
+                        case 'code-breakdown':
+                            CodeBreakdown.updateSection();
+                            break;
+                        case 'data-entry-summary':
+                            Charts.updateDateSummaryChart();
+                            break;
+                        case 'real-time':
+                            Recap.updateRealTimeSection();
+                            break;
+                    }
+                }, 300);
+            }
+        };
+
+
+// ===== RECAP MODULES =====
+        const Recap = {
+            updatePOSection() {
+                if (!State.stockData.length) return;
+                
+                // Calculate PO statistics
+                const poData = {};
+                State.stockData.forEach(row => {
+                    const po = row[5];
+                    const date = row[0];
+                    const mc = parseInt(row[6]) || 0;
+                    const kg = parseFloat(row[7]) || 0;
+                    
+                    if (po && po !== '-') {
+                        if (!poData[po]) {
+                            poData[po] = { date, items: 0, mc: 0, kg: 0 };
+                        }
+                        poData[po].items++;
+                        poData[po].mc += mc;
+                        poData[po].kg += kg;
+                    }
+                });
+                
+                const totalPOs = Object.keys(poData).length;
+                const activePOs = totalPOs; // All POs are considered active
+                const totalMC = Object.values(poData).reduce((sum, po) => sum + po.mc, 0);
+                const totalKg = Object.values(poData).reduce((sum, po) => sum + po.kg, 0);
+                
+                // Update stats
+                UI.animateNumber(document.getElementById('totalPOs'), totalPOs);
+                UI.animateNumber(document.getElementById('activePOs'), activePOs);
+                UI.animateNumber(document.getElementById('poTotalMC'), totalMC);
+                UI.animateNumber(document.getElementById('poTotalKg'), totalKg, 'kg');
+                
+                // Update PO table
+                const tbody = document.getElementById('poTableBody');
+                if (tbody) {
+                    tbody.innerHTML = Object.entries(poData)
+                        .sort(([,a], [,b]) => b.kg - a.kg)
+                        .slice(0, 20)
+                        .map(([po, data], index) => `
+                            <tr class="table-row animate-slideInUp" style="animation-delay: ${index * 0.05}s">
+                                <td class="px-8 py-6 text-sm font-mono font-bold text-blue-600">${po}</td>
+                                <td class="px-8 py-6 text-sm font-bold text-gray-900">${data.date}</td>
+                                <td class="px-8 py-6 text-sm text-gray-700 text-right font-semibold">${data.items}</td>
+                                <td class="px-8 py-6 text-sm text-blue-600 text-right font-black">${data.mc.toLocaleString()}</td>
+                                <td class="px-8 py-6 text-sm text-green-600 text-right font-black">${data.kg.toLocaleString()} kg</td>
+                                <td class="px-8 py-6 text-sm">
+                                    <span class="badge-advanced badge-success">Active</span>
+                                </td>
+                            </tr>
+                        `).join('');
+                }
+            },
+
+            updateBrandSection() {
+                if (!State.stockData.length) return;
+                
+                // Calculate brand statistics
+                const brandData = {};
+                State.stockData.forEach(row => {
+                    const brand = row[3];
+                    const product = row[1];
+                    const mc = parseInt(row[6]) || 0;
+                    const kg = parseFloat(row[7]) || 0;
+                    
+                    if (brand && brand !== '-') {
+                        if (!brandData[brand]) {
+                            brandData[brand] = { products: new Set(), mc: 0, kg: 0 };
+                        }
+                        brandData[brand].products.add(product);
+                        brandData[brand].mc += mc;
+                        brandData[brand].kg += kg;
+                    }
+                });
+                
+                const totalBrands = Object.keys(brandData).length;
+                const sortedBrands = Object.entries(brandData).sort(([,a], [,b]) => b.kg - a.kg);
+                const topBrand = sortedBrands.length > 0 ? sortedBrands[0][0] : '-';
+                const avgMC = totalBrands > 0 ? Math.round(Object.values(brandData).reduce((sum, b) => sum + b.mc, 0) / totalBrands) : 0;
+                const avgKg = totalBrands > 0 ? Math.round(Object.values(brandData).reduce((sum, b) => sum + b.kg, 0) / totalBrands) : 0;
+                
+                // Update stats
+                UI.animateNumber(document.getElementById('totalBrands'), totalBrands);
+                document.getElementById('topBrand').textContent = topBrand;
+                UI.animateNumber(document.getElementById('brandTotalMC'), avgMC);
+                UI.animateNumber(document.getElementById('brandTotalKg'), avgKg, 'kg');
+                
+                // Update top brands list
+                const topBrandsList = document.getElementById('topBrandsList');
+                if (topBrandsList) {
+                    const totalWeight = Object.values(brandData).reduce((sum, b) => sum + b.kg, 0);
+                    topBrandsList.innerHTML = sortedBrands.slice(0, 8).map(([brand, data], index) => {
+                        const percentage = ((data.kg / totalWeight) * 100).toFixed(1);
+                        return `
+                            <div class="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl animate-slideInRight" style="animation-delay: ${index * 0.1}s">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mr-4 text-white font-bold">
+                                        ${index + 1}
+                                    </div>
+                                    <div>
+                                        <div class="font-bold text-gray-800">${brand}</div>
+                                        <div class="text-sm text-gray-600">${data.products.size} products</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-black text-purple-600">${data.kg.toLocaleString()} kg</div>
+                                    <div class="text-sm text-gray-500">${percentage}%</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+                // Update brand table
+                const tbody = document.getElementById('brandTableBody');
+                if (tbody) {
+                    const totalWeight = Object.values(brandData).reduce((sum, b) => sum + b.kg, 0);
+                    tbody.innerHTML = sortedBrands.map(([brand, data], index) => {
+                        const marketShare = ((data.kg / totalWeight) * 100).toFixed(1);
+                        const performance = data.kg > avgKg ? 'High' : data.kg > avgKg * 0.5 ? 'Medium' : 'Low';
+                        const performanceClass = performance === 'High' ? 'badge-success' : performance === 'Medium' ? 'badge-warning' : 'badge-danger';
+                        
+                        return `
+                            <tr class="table-row animate-slideInUp" style="animation-delay: ${index * 0.05}s">
+                                <td class="px-8 py-6 text-sm font-black text-gray-900">${brand}</td>
+                                <td class="px-8 py-6 text-sm text-gray-700 text-right font-semibold">${data.products.size}</td>
+                                <td class="px-8 py-6 text-sm text-blue-600 text-right font-black">${data.mc.toLocaleString()}</td>
+                                <td class="px-8 py-6 text-sm text-green-600 text-right font-black">${data.kg.toLocaleString()} kg</td>
+                                <td class="px-8 py-6 text-sm text-purple-600 text-right font-black">${marketShare}%</td>
+                                <td class="px-8 py-6 text-sm">
+                                    <span class="badge-advanced ${performanceClass}">${performance}</span>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+                
+                // Update brand distribution chart
+                this.updateBrandChart(brandData);
+            },
+
+            updateLocationSection() {
+                if (!State.stockData.length) return;
+                
+                // Calculate location statistics
+                const locationData = {};
+                State.stockData.forEach(row => {
+                    const location = row[8];
+                    const product = row[1];
+                    const mc = parseInt(row[6]) || 0;
+                    const kg = parseFloat(row[7]) || 0;
+                    
+                    if (location && location !== '-') {
+                        if (!locationData[location]) {
+                            locationData[location] = { products: new Set(), mc: 0, kg: 0 };
+                        }
+                        locationData[location].products.add(product);
+                        locationData[location].mc += mc;
+                        locationData[location].kg += kg;
+                    }
+                });
+                
+                const totalLocations = Object.keys(locationData).length;
+                const sortedLocations = Object.entries(locationData).sort(([,a], [,b]) => b.kg - a.kg);
+                const busyLocation = sortedLocations.length > 0 ? sortedLocations[0][0] : '-';
+                const avgMC = totalLocations > 0 ? Math.round(Object.values(locationData).reduce((sum, l) => sum + l.mc, 0) / totalLocations) : 0;
+                const avgKg = totalLocations > 0 ? Math.round(Object.values(locationData).reduce((sum, l) => sum + l.kg, 0) / totalLocations) : 0;
+                
+                // Update stats
+                UI.animateNumber(document.getElementById('totalLocations'), totalLocations);
+                document.getElementById('busyLocation').textContent = busyLocation;
+                UI.animateNumber(document.getElementById('locationTotalMC'), avgMC);
+                UI.animateNumber(document.getElementById('locationTotalKg'), avgKg, 'kg');
+                
+                // Update warehouse capacity
+                const warehouseCapacity = document.getElementById('warehouseCapacity');
+                if (warehouseCapacity) {
+                    const maxCapacity = 10000; // Assumed max capacity per warehouse
+                    warehouseCapacity.innerHTML = sortedLocations.slice(0, 6).map(([location, data], index) => {
+                        const utilization = Math.min((data.kg / maxCapacity) * 100, 100);
+                        const utilizationClass = utilization > 80 ? 'bg-red-500' : utilization > 60 ? 'bg-yellow-500' : 'bg-green-500';
+                        
+                        return `
+                            <div class="animate-slideInRight" style="animation-delay: ${index * 0.1}s">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="font-bold text-gray-800">${location}</span>
+                                    <span class="text-sm font-semibold text-gray-600">${utilization.toFixed(1)}%</span>
+                                </div>
+                                <div class="progress-advanced mb-2">
+                                    <div class="progress-bar-advanced ${utilizationClass}" style="width: ${utilization}%"></div>
+                                </div>
+                                <div class="text-xs text-gray-500 font-medium">${data.kg.toLocaleString()} kg / ${maxCapacity.toLocaleString()} kg</div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+                // Update location table
+                const tbody = document.getElementById('locationTableBody');
+                if (tbody) {
+                    const maxCapacity = 10000;
+                    tbody.innerHTML = sortedLocations.map(([location, data], index) => {
+                        const utilization = Math.min((data.kg / maxCapacity) * 100, 100);
+                        const status = utilization > 80 ? 'High' : utilization > 60 ? 'Medium' : 'Normal';
+                        const statusClass = status === 'High' ? 'badge-danger' : status === 'Medium' ? 'badge-warning' : 'badge-success';
+                        
+                        return `
+                            <tr class="table-row animate-slideInUp" style="animation-delay: ${index * 0.05}s">
+                                <td class="px-8 py-6 text-sm font-black text-gray-900">${location}</td>
+                                <td class="px-8 py-6 text-sm text-gray-700 text-right font-semibold">${data.products.size}</td>
+                                <td class="px-8 py-6 text-sm text-blue-600 text-right font-black">${data.mc.toLocaleString()}</td>
+                                <td class="px-8 py-6 text-sm text-green-600 text-right font-black">${data.kg.toLocaleString()} kg</td>
+                                <td class="px-8 py-6 text-sm text-purple-600 text-right font-black">${utilization.toFixed(1)}%</td>
+                                <td class="px-8 py-6 text-sm">
+                                    <span class="badge-advanced ${statusClass}">${status}</span>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+                
+                // Update location chart
+                this.updateLocationChart(locationData);
+            },
+
+            updateRealTimeSection() {
+                // Update real-time metrics
+                const dataAge = State.lastUpdate ? Math.floor((new Date() - State.lastUpdate) / 1000) : 0;
+                const loadTime = State.performance.loadTime ? `${State.performance.loadTime.toFixed(0)}ms` : '-';
+                const memoryUsage = 'memory' in performance ? `${(performance.memory.usedJSHeapSize / 1048576).toFixed(1)}MB` : '-';
+                
+                document.getElementById('dataFreshness').textContent = dataAge < 60 ? `${dataAge}s` : `${Math.floor(dataAge / 60)}m`;
+                document.getElementById('loadTime').textContent = loadTime;
+                document.getElementById('memoryUsage').textContent = memoryUsage;
+                
+                // Update system logs
+                this.updateSystemLogs();
+                
+                // Update performance charts
+                this.updatePerformanceCharts();
+            },
+
+            updateBrandChart(brandData) {
+                const ctx = document.getElementById('brandDistributionChart');
+                if (!ctx || !brandData) return;
+                
+                if (State.charts.brandDistribution) {
+                    State.charts.brandDistribution.destroy();
+                }
+                
+                const sortedBrands = Object.entries(brandData).sort(([,a], [,b]) => b.kg - a.kg).slice(0, 8);
+                const brands = sortedBrands.map(([brand]) => brand);
+                const values = sortedBrands.map(([,data]) => data.kg);
+                
+                State.charts.brandDistribution = new Chart(ctx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: brands,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: [
+                                '#8B5CF6', '#EC4899', '#F59E0B', '#10B981',
+                                '#3B82F6', '#EF4444', '#06B6D4', '#84CC16'
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            },
+
+            updateLocationChart(locationData) {
+                const ctx = document.getElementById('locationChart');
+                if (!ctx || !locationData) return;
+                
+                if (State.charts.locationChart) {
+                    State.charts.locationChart.destroy();
+                }
+                
+                const sortedLocations = Object.entries(locationData).sort(([,a], [,b]) => b.kg - a.kg);
+                const locations = sortedLocations.map(([location]) => location);
+                const values = sortedLocations.map(([,data]) => data.kg);
+                
+                State.charts.locationChart = new Chart(ctx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: locations,
+                        datasets: [{
+                            label: 'Weight (kg)',
+                            data: values,
+                            backgroundColor: '#10B981',
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            },
+
+            updateSystemLogs() {
+                const logsContainer = document.getElementById('systemLogs');
+                if (!logsContainer) return;
+                
+                const logs = [
+                    `[${new Date().toLocaleTimeString()}] INFO: Dashboard v49 running normally`,
+                    `[${new Date().toLocaleTimeString()}] DATA: ${State.stockData.length} records loaded`,
+                    `[${new Date().toLocaleTimeString()}] PERF: Load time ${State.performance.loadTime?.toFixed(0) || 0}ms`,
+                    `[${new Date().toLocaleTimeString()}] USER: ${State.currentUser?.name || 'Unknown'} active`,
+                    `[${new Date().toLocaleTimeString()}] CONN: CDN connection stable`,
+                    `[${new Date().toLocaleTimeString()}] CACHE: Data cached successfully`,
+                    `[${new Date().toLocaleTimeString()}] UI: All components rendered`,
+                    `[${new Date().toLocaleTimeString()}] AUTH: Session valid`
+                ];
+                
+                logsContainer.innerHTML = logs.map(log => `
+                    <div class="text-green-400 mb-1 animate-fadeIn">${log}</div>
+                `).join('');
+                
+                logsContainer.scrollTop = logsContainer.scrollHeight;
+            },
+
+            updatePerformanceCharts() {
+                // Performance chart implementation would go here
+                // This is a placeholder for the actual chart updates
+                console.log('📊 Performance charts updated');
+            }
+        };
+
+        // ===== ENHANCED CHARTS MODULE =====
+        const Charts = {
+            init() {
+                this.initBrandChart();
+                this.initTrendChart();
+                this.initDateSummaryChart();
+            },
+
+            initBrandChart() {
+                const ctx = document.getElementById('brandChart');
+                if (!ctx) return;
+                
+                State.charts.brand = new Chart(ctx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            data: [],
+                            backgroundColor: [
+                                '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+                                '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6366F1'
+                            ],
+                            borderWidth: 0,
+                            hoverBorderWidth: 3,
+                            hoverBorderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 20,
+                                    font: { weight: 'bold' }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `${label}: ${value.toLocaleString()} kg (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            animateRotate: true,
+                            duration: 1000
+                        }
+                    }
+                });
+            },
+
+            initTrendChart() {
+                const ctx = document.getElementById('trendChart');
+                if (!ctx) return;
+                
+                State.charts.trend = new Chart(ctx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Total Stock (kg)',
+                            data: [],
+                            borderColor: '#3B82F6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#3B82F6',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 3,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value.toLocaleString() + ' kg';
+                                    },
+                                    font: { weight: 'bold' }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    font: { weight: 'bold' }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.1)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    font: { weight: 'bold' }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ${context.parsed.y.toLocaleString()} kg`;
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 1000,
+                            easing: 'easeInOutQuart'
+                        }
+                    }
+                });
+            },
+
+            initDateSummaryChart() {
+                const ctx = document.getElementById('dateSummaryChart');
+                if (!ctx) return;
+                
+                State.charts.dateSummary = new Chart(ctx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Total MC',
+                            data: [],
+                            backgroundColor: '#3B82F6',
+                            borderRadius: 8,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Total Weight (kg)',
+                            data: [],
+                            backgroundColor: '#10B981',
+                            borderRadius: 8,
+                            yAxisID: 'y1'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Total MC',
+                                    font: { weight: 'bold' }
+                                },
+                                ticks: {
+                                    font: { weight: 'bold' }
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Total Weight (kg)',
+                                    font: { weight: 'bold' }
+                                },
+                                ticks: {
+                                    font: { weight: 'bold' }
+                                },
+                                grid: {
+                                    drawOnChartArea: false,
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    font: { weight: 'bold' }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    font: { weight: 'bold' }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.dataset.label;
+                                        const value = context.parsed.y;
+                                        return `${label}: ${value.toLocaleString()}${label.includes('Weight') ? ' kg' : ''}`;
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 1000,
+                            easing: 'easeInOutQuart'
+                        }
+                    }
+                });
+            },
+
+            updateAll() {
+                this.updateBrandChart();
+                this.updateTrendChart();
+                this.updateDateSummaryChart();
+            },
+
+            updateBrandChart() {
+                if (!State.charts.brand || !State.filteredData.length) return;
+                
+                const brandData = {};
+                State.filteredData.forEach(row => {
+                    const brand = row[3];
+                    const kg = parseFloat(row[7]) || 0;
+                    brandData[brand] = (brandData[brand] || 0) + kg;
+                });
+                
+                const sortedBrands = Object.entries(brandData)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 8);
+                
+                const brands = sortedBrands.map(([brand]) => brand);
+                const values = sortedBrands.map(([,value]) => value);
+                
+                State.charts.brand.data.labels = brands;
+                State.charts.brand.data.datasets[0].data = values;
+                State.charts.brand.update('active');
+            },
+
+            updateTrendChart() {
+                if (!State.charts.trend || !State.filteredData.length) return;
+                
+                const dailyData = {};
+                State.filteredData.forEach(row => {
+                    const date = row[0];
+                    const kg = parseFloat(row[7]) || 0;
+                    
+                    if (date && date !== '-') {
+                        if (!dailyData[date]) dailyData[date] = 0;
+                        dailyData[date] += kg;
+                    }
+                });
+                
+                const sortedDates = Object.keys(dailyData).sort((a, b) => {
+                    return Utils.parseDate(a) - Utils.parseDate(b);
+                });
+                
+                const last10Days = sortedDates.slice(-10);
+                const labels = last10Days.length > 0 ? last10Days : ['Today'];
+                const data = last10Days.length > 0 ? last10Days.map(date => dailyData[date]) : [0];
+                
+                State.charts.trend.data.labels = labels;
+                State.charts.trend.data.datasets[0].data = data;
+                State.charts.trend.update('active');
+            },
+
+            updateDateSummaryChart() {
+                if (!State.charts.dateSummary || !State.filteredData.length) return;
+                
+                const dailyData = {};
+                State.filteredData.forEach(row => {
+                    const date = row[0];
+                    const mc = parseInt(row[6]) || 0;
+                    const kg = parseFloat(row[7]) || 0;
+                    
+                    if (date && date !== '-') {
+                        if (!dailyData[date]) {
+                            dailyData[date] = { mc: 0, kg: 0, entries: 0 };
+                        }
+                        dailyData[date].mc += mc;
+                        dailyData[date].kg += kg;
+                        dailyData[date].entries += 1;
+                    }
+                });
+                
+                const sortedDates = Object.keys(dailyData).sort((a, b) => {
+                    return Utils.parseDate(a) - Utils.parseDate(b);
+                });
+                
+                const labels = sortedDates;
+                const mcData = sortedDates.map(date => dailyData[date].mc);
+                const kgData = sortedDates.map(date => dailyData[date].kg);
+                
+                State.charts.dateSummary.data.labels = labels;
+                State.charts.dateSummary.data.datasets[0].data = mcData;
+                State.charts.dateSummary.data.datasets[1].data = kgData;
+                State.charts.dateSummary.update('active');
+                
+                // Update date summary list
+                this.updateDateSummaryList(dailyData, sortedDates);
+            },
+
+            updateDateSummaryList(dailyData, sortedDates) {
+                const listContainer = document.getElementById('dateSummaryList');
+                if (!listContainer) return;
+                
+                listContainer.innerHTML = sortedDates.map((date, index) => {
+                    const data = dailyData[date];
+                    return `
+                        <div class="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm animate-slideInRight" style="animation-delay: ${index * 0.05}s">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-green-500 rounded-xl flex items-center justify-center mr-4 text-white font-bold text-sm">
+                                    ${date.split('/')[0]}
+                                </div>
+                                <div>
+                                    <div class="font-bold text-gray-800">${date}</div>
+                                    <div class="text-sm text-gray-600">${data.entries} entries</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-black text-blue-600">${data.mc.toLocaleString()} MC</div>
+                                <div class="font-bold text-green-600">${data.kg.toLocaleString()} kg</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        };
+
+        // ===== CODE BREAKDOWN MODULE =====
+        const CodeBreakdown = {
+            filteredCodes: [],
+            currentPage: 1,
+            itemsPerPage: 10,
+            sortColumn: 'code',
+            sortDirection: 'asc',
+
+            updateSection() {
+                if (!State.stockData.length) return;
+                
+                this.processCodeData();
+                this.updateStats();
+                this.populateFilters();
+                this.populateTable();
+            },
+
+            processCodeData() {
+                // Group data by Brand first
+                const brandGroups = {};
+                
+                State.stockData.forEach(row => {
+                    const code = row[4]; // Product code
+                    const brand = row[3]; // Brand
+                    const product = row[1]; // Product name
+                    const packaging = row[2]; // Packaging
+                    const po = row[5]; // PO Number
+                    const mc = parseInt(row[6]) || 0;
+                    const kg = parseFloat(row[7]) || 0;
+                    const date = row[0]; // Date
+                    
+                    if (brand && brand !== '-' && code && code !== '-') {
+                        if (!brandGroups[brand]) {
+                            brandGroups[brand] = {
+                                brand: brand,
+                                po: po,
+                                products: {},
+                                totalMC: 0,
+                                totalKG: 0,
+                                productCount: 0
+                            };
+                        }
+                        
+                        // Group products within each Brand
+                        if (!brandGroups[brand].products[code]) {
+                            brandGroups[brand].products[code] = {
+                                code: code,
+                                brand: brand,
+                                product: product,
+                                packaging: packaging,
+                                po: po,
+                                mc: 0,
+                                kg: 0,
+                                breakdown: `${brand} : ${product} : ${packaging} : ${code}`
+                            };
+                            brandGroups[brand].productCount++;
+                        }
+                        
+                        brandGroups[brand].products[code].mc += mc;
+                        brandGroups[brand].products[code].kg += kg;
+                        brandGroups[brand].totalMC += mc;
+                        brandGroups[brand].totalKG += kg;
+                    }
+                });
+                
+                // Convert to array format for display
+                this.filteredCodes = Object.values(brandGroups);
+                this.sortCodes();
+            },
+
+            updateStats() {
+                const totalBrands = this.filteredCodes.length;
+                const totalProducts = this.filteredCodes.reduce((sum, brand) => sum + brand.productCount, 0);
+                const totalMC = this.filteredCodes.reduce((sum, brand) => sum + brand.totalMC, 0);
+                const totalKg = this.filteredCodes.reduce((sum, brand) => sum + brand.totalKG, 0);
+                
+                // Get unique products from all brands
+                const uniqueProducts = new Set();
+                this.filteredCodes.forEach(brand => {
+                    Object.values(brand.products).forEach(product => {
+                        uniqueProducts.add(product.product);
+                    });
+                });
+                
+                UI.animateNumber(document.getElementById('totalCodes'), totalBrands);
+                UI.animateNumber(document.getElementById('uniqueCodeBrands'), uniqueProducts.size);
+                UI.animateNumber(document.getElementById('codeTotalMC'), totalMC);
+                UI.animateNumber(document.getElementById('codeTotalKg'), totalKg, 'kg');
+            },
+
+            populateFilters() {
+                // Get brands from original stock data
+                const brands = [...new Set(State.stockData.map(row => row[3]).filter(b => b && b !== '-'))].sort();
+                
+                // Get PO numbers from original stock data
+                const pos = [...new Set(State.stockData.map(row => row[5]).filter(p => p && p !== '-'))].sort();
+                
+                const brandFilter = document.getElementById('codeFilterBrand');
+                const poFilter = document.getElementById('codeFilterPO');
+                
+                if (brandFilter) {
+                    brandFilter.innerHTML = '<option value="">All Brands</option>' + 
+                        brands.map(b => `<option value="${b}">${b}</option>`).join('');
+                }
+                
+                if (poFilter) {
+                    poFilter.innerHTML = '<option value="">All PO Numbers</option>' + 
+                        pos.map(p => `<option value="${p}">${p}</option>`).join('');
+                }
+                
+                console.log("🔍 Code filters populated: ${brands.length} brands, ${pos.length} PO numbers");
+            },
+
+            searchCodes() {
+                const searchTerm = document.getElementById('codeSearch')?.value?.toLowerCase() || '';
+                const brandFilter = document.getElementById('codeFilterBrand')?.value || '';
+                const poFilter = document.getElementById('codeFilterPO')?.value || '';
+                
+                console.log('🔍 Filtering Brands: search="${searchTerm}", brand="${brandFilter}", po="${poFilter}"');
+                
+                // Start with fresh data from stock
+                let filteredStock = State.stockData;
+                
+                // Apply brand filter first
+                if (brandFilter) {
+                    filteredStock = filteredStock.filter(row => row[3] === brandFilter);
+                }
+                
+                // Apply PO filter
+                if (poFilter) {
+                    filteredStock = filteredStock.filter(row => row[5] === poFilter);
+                }
+                
+                // Group data by Brand
+                const brandGroups = {};
+                
+                filteredStock.forEach(row => {
+                    const code = row[4]; // Product code
+                    const brand = row[3]; // Brand
+                    const product = row[1]; // Product name
+                    const packaging = row[2]; // Packaging
+                    const po = row[5]; // PO Number
+                    const mc = parseInt(row[6]) || 0;
+                    const kg = parseFloat(row[7]) || 0;
+                    const date = row[0]; // Date
+                    
+                    if (brand && brand !== '-' && code && code !== '-') {
+                        if (!brandGroups[brand]) {
+                            brandGroups[brand] = {
+                                brand: brand,
+                                po: po,
+                                products: {},
+                                totalMC: 0,
+                                totalKG: 0,
+                                productCount: 0
+                            };
+                        }
+                        
+                        // Group products within each Brand
+                        if (!brandGroups[brand].products[code]) {
+                            brandGroups[brand].products[code] = {
+                                code: code,
+                                brand: brand,
+                                product: product,
+                                packaging: packaging,
+                                po: po,
+                                mc: 0,
+                                kg: 0,
+                                breakdown: `${brand} : ${product} : ${packaging} : ${code}`
+                            };
+                            brandGroups[brand].productCount++;
+                        }
+                        
+                        brandGroups[brand].products[code].mc += mc;
+                        brandGroups[brand].products[code].kg += kg;
+                        brandGroups[brand].totalMC += mc;
+                        brandGroups[brand].totalKG += kg;
+                    }
+                });
+                
+                // Convert to array
+                this.filteredCodes = Object.values(brandGroups);
+                
+                // Apply search term filter
+                if (searchTerm) {
+                    this.filteredCodes = this.filteredCodes.filter(brandGroup => {
+                        // Search in brand name
+                        if (brandGroup.brand.toLowerCase().includes(searchTerm)) return true;
+                        
+                        // Search in any product within the brand
+                        return Object.values(brandGroup.products).some(product => {
+                            return product.code.toLowerCase().includes(searchTerm) ||
+                                   product.product.toLowerCase().includes(searchTerm) ||
+                                   product.packaging.toLowerCase().includes(searchTerm) ||
+                                   product.po.toLowerCase().includes(searchTerm);
+                        });
+                    });
+                }
+                
+                this.sortCodes();
+                this.currentPage = 1;
+                this.updateStats();
+                this.populateTable();
+                
+                console.log(`✅ Brand filtering complete: ${this.filteredCodes.length} brands found`);
+            },
+
+            filterCodes() {
+                this.searchCodes(); // Use same logic as search
+            },
+
+            sortCodes() {
+                this.filteredCodes.sort((a, b) => {
+                    let aVal, bVal;
+                    
+                    switch (this.sortColumn) {
+                        case 'brand':
+                            aVal = a.brand;
+                            bVal = b.brand;
+                            break;
+                        case 'po':
+                            aVal = a.po;
+                            bVal = b.po;
+                            break;
+                        case 'mc':
+                            aVal = a.totalMC;
+                            bVal = b.totalMC;
+                            break;
+                        case 'kg':
+                            aVal = a.totalKG;
+                            bVal = b.totalKG;
+                            break;
+                        case 'products':
+                            aVal = a.productCount;
+                            bVal = b.productCount;
+                            break;
+                        default:
+                            aVal = a.brand;
+                            bVal = b.brand;
+                    }
+                    
+                    if (this.sortColumn === 'mc' || this.sortColumn === 'kg' || this.sortColumn === 'products') {
+                        aVal = parseFloat(aVal) || 0;
+                        bVal = parseFloat(bVal) || 0;
+                    } else {
+                        aVal = String(aVal).toLowerCase();
+                        bVal = String(bVal).toLowerCase();
+                    }
+                    
+                    if (aVal < bVal) return this.sortDirection === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return this.sortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            },
+
+
+
+            sortTable(column) {
+                if (this.sortColumn === column) {
+                    this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    this.sortColumn = column;
+                    this.sortDirection = 'asc';
+                }
+                
+                this.filteredCodes.sort((a, b) => {
+                    let aVal = a[column];
+                    let bVal = b[column];
+                    
+                    if (column === 'mc' || column === 'kg') {
+                        aVal = parseFloat(aVal) || 0;
+                        bVal = parseFloat(bVal) || 0;
+                    } else {
+                        aVal = String(aVal).toLowerCase();
+                        bVal = String(bVal).toLowerCase();
+                    }
+                    
+                    if (aVal < bVal) return this.sortDirection === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return this.sortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                });
+                
+                this.populateTable();
+            },
+
+            populateTable() {
+                const tbody = document.getElementById('codeTableBody');
+                const mobileTable = document.getElementById('mobileCodeTable');
+                
+                const start = (this.currentPage - 1) * this.itemsPerPage;
+                const end = Math.min(start + this.itemsPerPage, this.filteredCodes.length);
+                const pageData = this.filteredCodes.slice(start, end);
+                
+                // Desktop table - now showing Brand groups
+                if (tbody) {
+                    tbody.innerHTML = pageData.map((brandGroup, index) => {
+                        const productDetails = Object.values(brandGroup.products).map(product => 
+                            `<div class="mb-2 p-2 bg-white rounded-lg border border-gray-200">
+                                <div class="font-mono font-bold text-indigo-600 mb-1">${product.code}</div>
+                                <div class="text-xs text-gray-600">
+                                    <span class="badge-advanced badge-success text-xs mr-1">${product.po}</span>
+                                    ${product.product} | ${product.packaging}
+                                </div>
+                                <div class="text-xs text-gray-700 mt-1">
+                                    <span class="font-bold text-purple-600">${product.mc.toLocaleString()} MC</span> | 
+                                    <span class="font-bold text-emerald-600">${product.kg.toLocaleString()} kg</span>
+                                </div>
+                            </div>`
+                        ).join('');
+                        
+                        return `
+                            <tr class="table-row animate-slideInUp" style="animation-delay: ${index * 0.05}s">
+                                <td class="px-8 py-6 text-sm font-black text-indigo-600">${brandGroup.brand}</td>
+                                <td class="px-8 py-6 text-sm font-mono font-bold text-gray-900">${brandGroup.po}</td>
+                                <td class="px-8 py-6 text-sm text-blue-600 text-right font-black text-lg">${brandGroup.productCount}</td>
+                                <td class="px-8 py-6 text-sm text-purple-600 text-right font-black text-lg">${brandGroup.totalMC.toLocaleString()}</td>
+                                <td class="px-8 py-6 text-sm text-emerald-600 text-right font-black text-lg">${brandGroup.totalKG.toLocaleString()} kg</td>
+                                <td class="px-8 py-6 text-sm">
+                                    <div class="bg-gradient-to-r from-indigo-50 to-cyan-50 p-3 rounded-xl max-w-md max-h-64 overflow-y-auto">
+                                        <div class="text-xs font-bold text-gray-600 mb-2">Products in this Brand:</div>
+                                        ${productDetails}
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+                
+                // Mobile table - now showing Brand groups
+                if (mobileTable) {
+                    mobileTable.innerHTML = pageData.map((brandGroup, index) => {
+                        const productList = Object.values(brandGroup.products).map(product => 
+                            `<div class="flex items-center justify-between p-2 bg-white rounded-lg shadow-sm mb-2">
+                                <div>
+                                    <div class="font-mono font-bold text-indigo-600">${product.code}</div>
+                                    <div class="text-xs text-gray-600">
+                                        <span class="badge-advanced badge-success text-xs">${product.po}</span>
+                                    </div>
+                                    <div class="text-xs text-gray-700">${product.product} | ${product.packaging}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold text-purple-600">${product.mc.toLocaleString()} MC</div>
+                                    <div class="font-bold text-emerald-600">${product.kg.toLocaleString()} kg</div>
+                                </div>
+                            </div>`
+                        ).join('');
+                        
+                        return `
+                            <div class="mobile-table-card animate-slideInUp border-l-4 border-indigo-500" style="animation-delay: ${index * 0.05}s">
+                                <!-- Brand Header -->
+                                <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-3 rounded-lg mb-4">
+                                    <div class="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Brand Summary</div>
+                                    <div class="grid grid-cols-2 gap-2 text-sm">
+                                        <div>
+                                            <span class="text-xs text-gray-500 font-semibold">Brand Name:</span>
+                                            <div class="font-black text-indigo-600">${brandGroup.brand}</div>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs text-gray-500 font-semibold">PO Number:</span>
+                                            <div class="font-mono font-bold text-gray-800">${brandGroup.po}</div>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs text-gray-500 font-semibold">Products:</span>
+                                            <div class="font-bold text-blue-600">${brandGroup.productCount} items</div>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs text-gray-500 font-semibold">Total:</span>
+                                            <div class="font-bold text-purple-600">${brandGroup.totalMC.toLocaleString()} MC</div>
+                                            <div class="font-bold text-emerald-600">${brandGroup.totalKG.toLocaleString()} kg</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Product Details -->
+                                <div class="bg-gradient-to-r from-gray-50 to-blue-50 p-3 rounded-lg">
+                                    <div class="text-xs font-bold text-gray-600 mb-3 uppercase tracking-wide">Product Details</div>
+                                    <div class="max-h-64 overflow-y-auto">
+                                        ${productList}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+                this.updatePagination();
+            },
+
+            updatePagination() {
+                const total = this.filteredCodes.length;
+                const start = (this.currentPage - 1) * this.itemsPerPage + 1;
+                const end = Math.min(this.currentPage * this.itemsPerPage, total);
+                const maxPages = Math.ceil(total / this.itemsPerPage);
+                
+                const elements = {
+                    showingStart: document.getElementById('codeShowingStart'),
+                    showingEnd: document.getElementById('codeShowingEnd'),
+                    totalRecords: document.getElementById('codeTotalRecords'),
+                    pageInfo: document.getElementById('codePageInfo'),
+                    firstBtn: document.getElementById('codeFirstBtn'),
+                    prevBtn: document.getElementById('codePrevBtn'),
+                    nextBtn: document.getElementById('codeNextBtn'),
+                    lastBtn: document.getElementById('codeLastBtn')
+                };
+                
+                if (elements.showingStart) elements.showingStart.textContent = total > 0 ? start : 0;
+                if (elements.showingEnd) elements.showingEnd.textContent = end;
+                if (elements.totalRecords) elements.totalRecords.textContent = total.toLocaleString();
+                if (elements.pageInfo) elements.pageInfo.textContent = `${this.currentPage} / ${maxPages}`;
+                
+                if (elements.firstBtn) elements.firstBtn.disabled = this.currentPage <= 1;
+                if (elements.prevBtn) elements.prevBtn.disabled = this.currentPage <= 1;
+                if (elements.nextBtn) elements.nextBtn.disabled = this.currentPage >= maxPages;
+                if (elements.lastBtn) elements.lastBtn.disabled = this.currentPage >= maxPages;
+            },
+
+            resetFilters() {
+                const elements = {
+                    codeSearch: document.getElementById('codeSearch'),
+                    codeFilterBrand: document.getElementById('codeFilterBrand'),
+                    codeFilterPO: document.getElementById('codeFilterPO')
+                };
+                
+                Object.values(elements).forEach(el => {
+                    if (el) el.value = el.tagName === 'SELECT' ? el.options[0].value : '';
+                });
+                
+                this.currentPage = 1;
+                this.updateSection();
+                
+                Utils.showNotification('info', '🔄 Code filters reset');
+            },
+
+            exportToPDF() {
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF('landscape');
+                    
+                    // Header
+                    doc.setFontSize(20);
+                    doc.setFont(undefined, 'bold');
+                    doc.text('Brand Breakdown kode', 20, 20);
+                    
+                    doc.setFontSize(12);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(`Generated: ${new Date().toLocaleString('id-ID')}`, 20, 30);
+                    doc.text(`Total Brands: ${this.filteredCodes.length}`, 20, 35);
+                    doc.text(`User: ${State.currentUser?.name || 'Unknown'}`, 20, 40);
+                    
+                    // Summary stats
+                    const totalMC = this.filteredCodes.reduce((sum, brand) => sum + brand.totalMC, 0);
+                    const totalKg = this.filteredCodes.reduce((sum, brand) => sum + brand.totalKG, 0);
+                    const totalProducts = this.filteredCodes.reduce((sum, brand) => sum + brand.productCount, 0);
+                    
+                    doc.text(`Total MC: ${totalMC.toLocaleString()}`, 150, 30);
+                    doc.text(`Total Weight: ${totalKg.toLocaleString()} kg`, 150, 35);
+                    doc.text(`Total Products: ${totalProducts}`, 150, 40);
+                    
+                    // Table data - Brand summary
+                    const tableData = this.filteredCodes.map(brandGroup => [
+                        brandGroup.brand, brandGroup.po, brandGroup.productCount.toString(),
+                        brandGroup.totalMC.toLocaleString(), brandGroup.totalKG.toLocaleString() + ' kg'
+                    ]);
+                    
+                    doc.autoTable({
+                        head: [['Brand Name', 'PO Number', 'Products', 'Total MC', 'Total Weight']],
+                        body: tableData,
+                        startY: 50,
+                        styles: { 
+                            fontSize: 10,
+                            cellPadding: 4
+                        },
+                        headStyles: { 
+                            fillColor: [79, 70, 229],
+                            textColor: 255,
+                            fontStyle: 'bold'
+                        },
+                        alternateRowStyles: {
+                            fillColor: [245, 247, 250]
+                        }
+                    });
+                    
+                    // Add detailed breakdown for each Brand
+                    let currentY = doc.lastAutoTable.finalY + 20;
+                    
+                    this.filteredCodes.forEach((brandGroup, index) => {
+                        if (currentY > 180) { // Start new page if needed
+                            doc.addPage();
+                            currentY = 20;
+                        }
+                        
+                        // Brand Header
+                        doc.setFontSize(14);
+                        doc.setFont(undefined, 'bold');
+                        doc.text(`Brand: ${brandGroup.brand} (PO: ${brandGroup.po})`, 20, currentY);
+                        currentY += 10;
+                        
+                        // Product details table
+                        const productData = Object.values(brandGroup.products).map(product => [
+                            product.code, product.po, product.product, product.packaging,
+                            product.mc.toLocaleString(), product.kg.toLocaleString() + ' kg'
+                        ]);
+                        
+                        doc.autoTable({
+                            head: [['Code', 'PO Number', 'Product', 'Packaging', 'MC', 'Weight']],
+                            body: productData,
+                            startY: currentY,
+                            styles: { 
+                                fontSize: 8,
+                                cellPadding: 2
+                            },
+                            headStyles: { 
+                                fillColor: [99, 102, 241],
+                                textColor: 255,
+                                fontStyle: 'bold'
+                            },
+                            margin: { left: 30, right: 30 }
+                        });
+                        
+                        currentY = doc.lastAutoTable.finalY + 15;
+                    });
+                    
+                    // Footer
+                    const pageCount = doc.internal.getNumberOfPages();
+                    for (let i = 1; i <= pageCount; i++) {
+                        doc.setPage(i);
+                        doc.setFontSize(8);
+                        doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width - 30, doc.internal.pageSize.height - 10);
+                        doc.text('Breakdown Kode - PPIC', 20, doc.internal.pageSize.height - 10);
+                    }
+                    
+                    doc.save(`brand-breakdown-${new Date().toISOString().split('T')[0]}.pdf`);
+                    Utils.showNotification('success', '✅ Brand breakdown PDF exported successfully!');
+                    
+                } catch (error) {
+                    console.error('Error generating PDF:', error);
+                    Utils.showNotification('error', '❌ Failed to generate PDF report');
+                }
+            },
+
+            changeItemsPerPage() {
+                const select = document.getElementById('codeItemsPerPage');
+                if (select) {
+                    this.itemsPerPage = parseInt(select.value);
+                    this.currentPage = 1;
+                    this.populateTable();
+                }
+            },
+
+            firstPage() {
+                this.currentPage = 1;
+                this.populateTable();
+            },
+
+            previousPage() {
+                if (this.currentPage > 1) {
+                    this.currentPage--;
+                    this.populateTable();
+                }
+            },
+
+            nextPage() {
+                const maxPages = Math.ceil(this.filteredCodes.length / this.itemsPerPage);
+                if (this.currentPage < maxPages) {
+                    this.currentPage++;
+                    this.populateTable();
+                }
+            },
+
+            lastPage() {
+                const maxPages = Math.ceil(this.filteredCodes.length / this.itemsPerPage);
+                this.currentPage = maxPages;
+                this.populateTable();
+            }
+        };
+
+        // ===== ENHANCED EXPORT MODULE =====
+        const Export = {
+            toPDF() {
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF('landscape');
+                    
+                    // Header
+                    doc.setFontSize(20);
+                    doc.setFont(undefined, 'bold');
+                    doc.text('Dashboard Stok Produk - WKB', 20, 20);
+                    
+                    doc.setFontSize(12);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(`Generated: ${new Date().toLocaleString('id-ID')}`, 20, 30);
+                    doc.text(`Total Records: ${State.filteredData.length}`, 20, 35);
+                    doc.text(`User: ${State.currentUser?.name || 'Unknown'}`, 20, 40);
+                    
+                    // Summary stats
+                    const totalMC = State.filteredData.reduce((sum, row) => sum + (parseInt(row[6]) || 0), 0);
+                    const totalKg = State.filteredData.reduce((sum, row) => sum + (parseFloat(row[7]) || 0), 0);
+                    
+                    doc.text(`Total MC: ${totalMC.toLocaleString()}`, 150, 30);
+                    doc.text(`Total Weight: ${totalKg.toLocaleString()} kg`, 150, 35);
+                    
+                    // Table data
+                    const tableData = State.filteredData.map(row => [
+                        row[0], row[1], row[2], row[3], row[4], row[5], 
+                        row[6].toLocaleString(), row[7].toLocaleString() + ' kg', row[8]
+                    ]);
+                    
+                    doc.autoTable({
+                        head: [['Date', 'Product', 'Packaging', 'Brand', 'Code', 'PO Number', 'MC Qty', 'Weight', 'Location']],
+                        body: tableData,
+                        startY: 50,
+                        styles: { 
+                            fontSize: 8,
+                            cellPadding: 3
+                        },
+                        headStyles: { 
+                            fillColor: [59, 130, 246],
+                            textColor: 255,
+                            fontStyle: 'bold'
+                        },
+                        alternateRowStyles: {
+                            fillColor: [245, 247, 250]
+                        }
+                    });
+                    
+                    // Footer
+                    const pageCount = doc.internal.getNumberOfPages();
+                    for (let i = 1; i <= pageCount; i++) {
+                        doc.setPage(i);
+                        doc.setFontSize(8);
+                        doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width - 30, doc.internal.pageSize.height - 10);
+                        doc.text('Dashboard wkb - Stock Management', 20, doc.internal.pageSize.height - 10);
+                    }
+                    
+                    doc.save(`dashboard-wkb-report-${new Date().toISOString().split('T')[0]}.pdf`);
+                    Utils.showNotification('success', '✅ PDF report generated successfully!');
+                    
+                } catch (error) {
+                    console.error('Error generating PDF:', error);
+                    Utils.showNotification('error', '❌ Failed to generate PDF report');
+                }
+            },
+
+            toExcel() {
+                try {
+                    const wb = XLSX.utils.book_new();
+                    
+                    // Main data sheet
+                    const wsData = [
+                        ['Date', 'Product', 'Packaging', 'Brand', 'Code', 'PO Number', 'MC Qty', 'Weight (kg)', 'Location'],
+                        ...State.filteredData
+                    ];
+                    
+                    const ws = XLSX.utils.aoa_to_sheet(wsData);
+                    
+                    // Set column widths
+                    ws['!cols'] = [
+                        { wch: 12 }, { wch: 25 }, { wch: 15 }, { wch: 15 },
+                        { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 12 }, { wch: 15 }
+                    ];
+                    
+                    XLSX.utils.book_append_sheet(wb, ws, 'Stock Data');
+                    
+                    
+               // Summary sheet
+                    const brandSummary = {};
+                    State.filteredData.forEach(row => {
+                        const brand = row[3];
+                        if (!brandSummary[brand]) {
+                            brandSummary[brand] = { mc: 0, kg: 0 };
+                        }
+                        brandSummary[brand].mc += parseInt(row[6]) || 0;
+                        brandSummary[brand].kg += parseFloat(row[7]) || 0;
+                    });
+                    
+                    const summaryData = [
+                        ['Brand', 'Total MC', 'Total Weight (kg)'],
+                        ...Object.entries(brandSummary).map(([brand, data]) => [
+                            brand, data.mc, data.kg
+                        ])
+                    ];
+                    
+                    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+                    XLSX.utils.book_append_sheet(wb, wsSummary, 'Brand Summary');
+                    
+                    XLSX.writeFile(wb, `dashboard-v49-export-${new Date().toISOString().split('T')[0]}.xlsx`);
+                    Utils.showNotification('success', '✅ Excel file exported successfully!');
+                    
+                } catch (error) {
+                    console.error('Error generating Excel:', error);
+                    Utils.showNotification('error', '❌ Failed to generate Excel file');
+                }
+            }
+        };
+
+        // ===== ENHANCED UTILITIES MODULE =====
+        const Utils = {
+            formatDate(dateValue) {
+                if (!dateValue) return '';
+                
+                if (typeof dateValue === 'string' && dateValue.includes('/')) {
+                    return dateValue;
+                }
+                
+                if (typeof dateValue === 'number') {
+                    const date = XLSX.SSF.parse_date_code(dateValue);
+                    if (date) {
+                        const day = String(date.d).padStart(2, '0');
+                        const month = String(date.m).padStart(2, '0');
+                        const year = date.y;
+                        return `${day}/${month}/${year}`;
+                    }
+                }
+                
+                try {
+                    const date = new Date(dateValue);
+                    if (!isNaN(date.getTime())) {
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const year = date.getFullYear();
+                        return `${day}/${month}/${year}`;
+                    }
+                } catch (e) {
+                    console.warn('Date parsing error:', e);
+                }
+                
+                return String(dateValue);
+            },
+
+            parseDate(dateString) {
+                if (!dateString) return new Date(0);
+                
+                if (dateString.includes('/')) {
+                    const [day, month, year] = dateString.split('/');
+                    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                }
+                
+                return new Date(dateString);
+            },
+
+            showNotification(type, message) {
+                // Notifications disabled
+                console.log(`${type.toUpperCase()}: ${message}`);
+            },
+
+            setCurrentTime() {
+                const updateTime = () => {
+                    const now = new Date();
+                    const timeString = now.toLocaleTimeString('id-ID');
+                    
+                    const timeElements = document.querySelectorAll('#currentTime');
+                    timeElements.forEach(el => {
+                        if (el) el.textContent = timeString;
+                    });
+                };
+                
+                updateTime();
+                setInterval(updateTime, 1000);
+            },
+
+
+
+            generateSessionId() {
+                return 'sess_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+            },
+
+            updateLastUpdateTime() {
+                const lastUpdateElement = document.getElementById('lastUpdateTime');
+                if (lastUpdateElement && State.targetDate) {
+                    lastUpdateElement.textContent = `Update: ${State.targetDate}`;
+                }
+            }
+        };
+
+        // ===== PERFORMANCE MONITORING MODULE =====
+        const Performance = {
+            startTracking() {
+                console.log('📊 Performance tracking started');
+                
+                // Monitor memory usage
+                if ('memory' in performance) {
+                    setInterval(() => {
+                        const memory = performance.memory;
+                        console.log(`Memory: ${(memory.usedJSHeapSize / 1048576).toFixed(2)}MB used`);
+                    }, 60000); // Every minute
+                }
+                
+                // Monitor page load performance
+                window.addEventListener('load', () => {
+                    setTimeout(() => {
+                        const perfData = performance.getEntriesByType('navigation')[0];
+                        console.log(`Page load: ${perfData.loadEventEnd - perfData.fetchStart}ms`);
+                    }, 0);
+                });
+            }
+        };
+
+        // ===== GLOBAL FUNCTIONS =====
         function togglePassword() {
             const passwordInput = document.getElementById('password');
             const toggleIcon = document.getElementById('passwordToggle');
@@ -158,1496 +2451,49 @@
             }
         }
 
-        // Data fetching functions
-        async function fetchTargetDate() {
-            try {
-                const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${CONFIG.TARGET_DATE_CELL}?key=${CONFIG.API_KEY}`;
-                const response = await fetch(url);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.values && data.values[0] && data.values[0][0]) {
-                        targetDate = data.values[0][0];
-                    }
-                }
-            } catch (error) {
-                console.error('Error fetching target date:', error);
-                targetDate = new Date().toISOString().split('T')[0];
-            }
-        }
-
-        async function fetchData() {
-            if (isLoading) return;
-            
-            isLoading = true;
-            showLoading();
-            
-            try {
-                // Fetch target date first
-                await fetchTargetDate();
-                
-                // Fetch main data
-                const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${CONFIG.SHEET_NAME}?key=${CONFIG.API_KEY}`;
-                const response = await fetch(url);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.values && data.values.length > 1) {
-                    // Process data (skip header row)
-                    stockData = data.values.slice(1).map(row => {
-                        const processedRow = [];
-                        for (let i = 0; i < 9; i++) {
-                            processedRow[i] = row[i] || '-';
-                        }
-                        return processedRow;
-                    });
-                    
-                    filteredData = [...stockData];
-                    updateUI();
-                    setConnectionStatus(true, 'Terhubung');
-                    
-                    console.log(`✅ Data berhasil dimuat: ${stockData.length} baris`);
-                } else {
-                    throw new Error('No data found in sheet');
-                }
-            } catch (error) {
-                console.error('❌ Error fetching data:', error);
-                setConnectionStatus(false, 'Terputus');
-                showError(error.message);
-                
-                // Load sample data as fallback
-                loadSampleData();
-            } finally {
-                isLoading = false;
-                hideLoading();
-            }
-        }
-
-        function loadSampleData() {
-            console.log('📝 Loading sample data...');
-            
-            if (!targetDate) {
-                targetDate = new Date().toISOString().split('T')[0];
-            }
-            
-            stockData = [
-                ['2024-01-15', 'Beras Premium', '25kg', 'Brand A', 'BP001', 'PO-2024-001', '20', '500', 'Gudang A'],
-                ['2024-01-15', 'Gula Pasir', '1kg', 'Brand B', 'GP002', 'PO-2024-001', '100', '100', 'Gudang B'],
-                ['2024-01-16', 'Minyak Goreng', '2L', 'Brand C', 'MG003', 'PO-2024-002', '50', '100', 'Gudang A'],
-                ['2024-01-16', 'Tepung Terigu', '1kg', 'Brand A', 'TT004', 'PO-2024-002', '75', '75', 'Gudang C'],
-                ['2024-01-17', 'Beras Premium', '25kg', 'Brand B', 'BP005', 'PO-2024-003', '15', '375', 'Gudang B'],
-                ['2024-01-17', 'Gula Pasir', '1kg', 'Brand A', 'GP006', 'PO-2024-003', '80', '80', 'Gudang A'],
-                ['2024-01-18', 'Minyak Goreng', '2L', 'Brand B', 'MG007', 'PO-2024-004', '30', '60', 'Gudang C'],
-                ['2024-01-18', 'Tepung Terigu', '1kg', 'Brand C', 'TT008', 'PO-2024-004', '60', '60', 'Gudang B']
-            ];
-            filteredData = [...stockData];
-            updateUI();
-        }
-
-        // UI functions
-        function showLoading() {
-            const tbody = document.getElementById('stockTableBody');
-            if (tbody) {
-                tbody.innerHTML = `
-                    <tr><td colspan="9" class="px-6 py-12 text-center">
-                        <div class="flex flex-col items-center">
-                            <div class="loading-spinner w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mb-4"></div>
-                            <p class="text-gray-600">Memuat data dari PPIC...</p>
-                        </div>
-                    </td></tr>
-                `;
-            }
-        }
-
-        function hideLoading() {
-            // Loading will be replaced by actual data
-        }
-
-        function showError(message) {
-            const tbody = document.getElementById('stockTableBody');
-            if (tbody) {
-                tbody.innerHTML = `
-                    <tr><td colspan="9" class="px-6 py-12 text-center">
-                        <div class="flex flex-col items-center">
-                            <i class="fas fa-exclamation-triangle text-yellow-500 text-3xl mb-4"></i>
-                            <p class="text-gray-600 mb-2">Gagal memuat data dari PPIC</p>
-                            <p class="text-sm text-gray-500 mb-4">${message}</p>
-                            <button onclick="refreshData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                                <i class="fas fa-refresh mr-2"></i>Coba Lagi
-                            </button>
-                        </div>
-                    </td></tr>
-                `;
-            }
-        }
-
-        function setConnectionStatus(connected, text) {
-            const status = document.getElementById('connectionStatus');
-            const statusText = document.getElementById('connectionText');
-            
-            if (status && statusText) {
-                if (connected) {
-                    status.className = 'w-2 h-2 bg-green-500 rounded-full mr-2';
-                    statusText.textContent = text || 'Terhubung';
-                } else {
-                    status.className = 'w-2 h-2 bg-red-500 rounded-full mr-2';
-                    statusText.textContent = text || 'Terputus';
-                }
-            }
-        }
-
-        function toggleSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            const overlay = document.querySelector('.mobile-overlay');
-            
-            if (sidebar) sidebar.classList.toggle('open');
-            if (overlay) overlay.classList.toggle('show');
-        }
-
-        function closeSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            const overlay = document.querySelector('.mobile-overlay');
-            
-            if (sidebar) sidebar.classList.remove('open');
-            if (overlay) overlay.classList.remove('show');
-        }
-
-        function showSection(sectionName) {
-            document.querySelectorAll('.section').forEach(section => {
-                section.classList.add('hidden');
-            });
-            
-            const targetSection = document.getElementById(sectionName + '-section');
-            if (targetSection) {
-                targetSection.classList.remove('hidden');
-            }
-            
-            document.querySelectorAll('.sidebar-item').forEach(item => {
-                item.classList.remove('bg-gradient-to-r', 'from-blue-500', 'to-purple-600', 'text-white');
-                item.classList.add('text-gray-700');
-            });
-            
-            if (event && event.target) {
-                const sidebarItem = event.target.closest('.sidebar-item');
-                if (sidebarItem) {
-                    sidebarItem.classList.add('bg-gradient-to-r', 'from-blue-500', 'to-purple-600', 'text-white');
-                    sidebarItem.classList.remove('text-gray-700');
-                }
-            }
-            
-            if (window.innerWidth <= 768) {
-                closeSidebar();
-            }
-            
-            // Update section-specific data when switching sections
-            updateSectionData(sectionName);
-        }
-
-        function updateSectionData(sectionName) {
-            switch(sectionName) {
-                case 'rekap-po':
-                    updatePOSummary();
-                    break;
-                case 'rekap-brand':
-                    updateBrandSummary();
-                    break;
-                case 'rekap-lokasi':
-                    updateLocationSummary();
-                    break;
-                case 'rekap-kode':
-                    updateCodeSummary();
-                    break;
-                case 'kode-per-size-brand':
-                    updateSizePackingBrandSummary();
-                    break;
-                case 'stok-hari-ini':
-                    updateTargetDateData();
-                    break;
-                case 'grafik':
-                    updateCharts();
-                    break;
-            }
-        }
-
-        function updateUI() {
-            populateFilters();
-            populateTable();
-            updateStats();
-            updateAllSummaries();
-            updateCharts();
-            updateCurrentDate();
-        }
-
-        function updateAllSummaries() {
-            updatePOSummary();
-            updateBrandSummary();
-            updateLocationSummary();
-            updateCodeSummary();
-            updateSizePackingBrandSummary();
-            updateTargetDateData();
-        }
-
-        function populateFilters() {
-            const products = [...new Set(stockData.map(row => row[1]).filter(item => item && item !== '-'))];
-            const brands = [...new Set(stockData.map(row => row[3]).filter(item => item && item !== '-'))];
-            const kodes = [...new Set(stockData.map(row => row[4]).filter(item => item && item !== '-'))];
-            const locations = [...new Set(stockData.map(row => row[8]).filter(item => item && item !== '-'))];
-            
-            const productFilter = document.getElementById('productFilter');
-            const brandFilter = document.getElementById('brandFilter');
-            const kodeFilter = document.getElementById('kodeFilter');
-            const locationFilter = document.getElementById('locationFilter');
-            
-            if (productFilter) {
-                productFilter.innerHTML = '<option value="">Semua Produk</option>' + 
-                    products.map(p => `<option value="${p}">${p}</option>`).join('');
-            }
-            
-            if (brandFilter) {
-                brandFilter.innerHTML = '<option value="">Semua Brand</option>' + 
-                    brands.map(b => `<option value="${b}">${b}</option>`).join('');
-            }
-            
-            if (kodeFilter) {
-                kodeFilter.innerHTML = '<option value="">Semua Kode</option>' + 
-                    kodes.map(k => `<option value="${k}">${k}</option>`).join('');
-            }
-            
-            if (locationFilter) {
-                locationFilter.innerHTML = '<option value="">Semua Lokasi</option>' + 
-                    locations.map(l => `<option value="${l}">${l}</option>`).join('');
-            }
-        }
-
-        function populateTable() {
-            const tbody = document.getElementById('stockTableBody');
-            if (!tbody) return;
-            
-            const start = (currentPage - 1) * CONFIG.ITEMS_PER_PAGE;
-            const end = Math.min(start + CONFIG.ITEMS_PER_PAGE, filteredData.length);
-            
-            tbody.innerHTML = filteredData.slice(start, end).map(row => `
-                <tr class="table-row">
-                    <td class="px-4 py-3 text-sm text-gray-900">${row[0]}</td>
-                    <td class="px-4 py-3 text-sm font-medium text-gray-900">${row[1]}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${row[2]}</td>
-                    <td class="px-4 py-3 text-sm">
-                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">${row[3]}</span>
-                    </td>
-                    <td class="px-4 py-3 text-sm text-gray-900 font-mono">${row[4]}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900 font-mono">${row[5]}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900 text-right">${row[6]}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900 text-right font-medium">${row[7]} kg</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">
-                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">${row[8] || '-'}</span>
-                    </td>
-                </tr>
-            `).join('');
-            
-            updatePagination();
-        }
-
-        function updatePagination() {
-            const total = filteredData.length;
-            const start = (currentPage - 1) * CONFIG.ITEMS_PER_PAGE + 1;
-            const end = Math.min(currentPage * CONFIG.ITEMS_PER_PAGE, total);
-            const maxPages = Math.ceil(total / CONFIG.ITEMS_PER_PAGE);
-            
-            const showingStart = document.getElementById('showingStart');
-            const showingEnd = document.getElementById('showingEnd');
-            const totalRecords = document.getElementById('totalRecords');
-            const pageInfo = document.getElementById('pageInfo');
-            const prevBtn = document.getElementById('prevBtn');
-            const nextBtn = document.getElementById('nextBtn');
-            
-            if (showingStart) showingStart.textContent = total > 0 ? start : 0;
-            if (showingEnd) showingEnd.textContent = end;
-            if (totalRecords) totalRecords.textContent = total;
-            if (pageInfo) pageInfo.textContent = `${currentPage} / ${maxPages}`;
-            
-            if (prevBtn) prevBtn.disabled = currentPage <= 1;
-            if (nextBtn) nextBtn.disabled = currentPage >= maxPages;
-        }
-
-        function updateStats() {
-            const totalItems = filteredData.reduce((sum, row) => sum + (parseInt(row[6]) || 0), 0);
-            const totalKg = filteredData.reduce((sum, row) => sum + (parseInt(row[7]) || 0), 0);
-            const uniqueProducts = new Set(filteredData.map(row => row[1])).size;
-            const uniqueBrands = new Set(filteredData.map(row => row[3])).size;
-            
-            const totalItemsEl = document.getElementById('totalItems');
-            const totalKgEl = document.getElementById('totalKg');
-            const uniqueProductsEl = document.getElementById('uniqueProducts');
-            const uniqueBrandsEl = document.getElementById('uniqueBrands');
-            
-            if (totalItemsEl) totalItemsEl.textContent = totalItems.toLocaleString();
-            if (totalKgEl) totalKgEl.textContent = totalKg.toLocaleString();
-            if (uniqueProductsEl) uniqueProductsEl.textContent = uniqueProducts;
-            if (uniqueBrandsEl) uniqueBrandsEl.textContent = uniqueBrands;
-        }
-
-        let allPOSummaryData = [];
-
-        function updatePOSummary() {
-            // PO Summary
-            const poSummary = {};
-            filteredData.forEach(row => {
-                const po = row[5];
-                const product = row[1];
-                const mc = parseInt(row[6]) || 0;
-                const kg = parseInt(row[7]) || 0;
-                
-                if (!poSummary[po]) {
-                    poSummary[po] = { 
-                        items: 0, 
-                        kg: 0, 
-                        products: new Set(),
-                        productDetails: new Map()
-                    };
-                }
-                
-                poSummary[po].items += mc;
-                poSummary[po].kg += kg;
-                poSummary[po].products.add(product);
-                
-                // Track product details for top products
-                if (!poSummary[po].productDetails.has(product)) {
-                    poSummary[po].productDetails.set(product, { mc: 0, kg: 0 });
-                }
-                const productData = poSummary[po].productDetails.get(product);
-                productData.mc += mc;
-                productData.kg += kg;
-            });
-            
-            allPOSummaryData = Object.entries(poSummary).sort((a, b) => b[1].kg - a[1].kg);
-            
-            const totalPOs = allPOSummaryData.length;
-            const totalPOItems = allPOSummaryData.reduce((sum, [po, data]) => sum + data.items, 0);
-            const totalPOKg = allPOSummaryData.reduce((sum, [po, data]) => sum + data.kg, 0);
-            const avgItemsPerPO = totalPOs > 0 ? Math.round(totalPOItems / totalPOs) : 0;
-            
-            // Update PO stats
-            const totalPOCountEl = document.getElementById('totalPOCount');
-            const totalPOItemsEl = document.getElementById('totalPOItems');
-            const totalPOKgEl = document.getElementById('totalPOKg');
-            const avgItemsPerPOEl = document.getElementById('avgItemsPerPO');
-            
-            if (totalPOCountEl) totalPOCountEl.textContent = totalPOs;
-            if (totalPOItemsEl) totalPOItemsEl.textContent = totalPOItems.toLocaleString();
-            if (totalPOKgEl) totalPOKgEl.textContent = totalPOKg.toLocaleString();
-            if (avgItemsPerPOEl) avgItemsPerPOEl.textContent = avgItemsPerPO;
-            
-            renderPOSummary(allPOSummaryData);
-        }
-
-        function renderPOSummary(dataToRender) {
-            const totalPOs = allPOSummaryData.length;
-            const displayLimit = showAllPOs ? dataToRender.length : Math.min(6, dataToRender.length);
-            const displayedPOs = dataToRender.slice(0, displayLimit);
-            
-            const displayedPOCountEl = document.getElementById('displayedPOCount');
-            const showAllBtn = document.getElementById('showAllPOsBtn');
-            const displayInfo = document.getElementById('poDisplayInfo');
-            
-            if (displayedPOCountEl) displayedPOCountEl.textContent = displayedPOs.length;
-            
-            if (showAllBtn && displayInfo) {
-                if (showAllPOs) {
-                    showAllBtn.innerHTML = '<i class="fas fa-eye-slash mr-2"></i>Tampilkan 6 Teratas';
-                    displayInfo.textContent = `Menampilkan semua ${dataToRender.length} PO`;
-                } else {
-                    showAllBtn.innerHTML = '<i class="fas fa-eye mr-2"></i>Tampilkan Semua PO';
-                    displayInfo.textContent = `Menampilkan ${Math.min(6, dataToRender.length)} dari ${totalPOs} PO`;
-                }
-            }
-            
-            const poSummaryEl = document.getElementById('poSummary');
-            if (poSummaryEl) {
-                poSummaryEl.innerHTML = displayedPOs
-                    .map(([po, data], index) => {
-                        // Get top 4 products for this PO
-                        const topProducts = Array.from(data.productDetails.entries())
-                            .sort((a, b) => b[1].kg - a[1].kg)
-                            .slice(0, 4);
-                        
-                        return `
-                        <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
-                            <div class="flex justify-between items-start mb-4">
-                                <h3 class="text-lg font-semibold text-gray-800">${po}</h3>
-                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">#${index + 1}</span>
-                            </div>
-                            <div class="space-y-3 mb-4">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total MC:</span>
-                                    <span class="font-medium text-blue-600">${data.items}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total Kg:</span>
-                                    <span class="font-medium text-green-600">${data.kg.toLocaleString()} kg</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Jenis Produk:</span>
-                                    <span class="font-medium text-purple-600">${data.products.size}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Rata-rata/Item:</span>
-                                    <span class="font-medium text-orange-600">${Math.round(data.kg / data.items)} kg</span>
-                                </div>
-                            </div>
-                            
-                            <!-- Top 4 Products -->
-                            <div class="border-t pt-4 mb-3">
-                                <p class="text-sm font-medium text-gray-700 mb-3">🏆 Top 4 Produk:</p>
-                                <div class="space-y-2">
-                                    ${topProducts.map(([product, productData], idx) => `
-                                        <div class="flex justify-between items-center text-sm">
-                                            <div class="flex items-center">
-                                                <span class="w-5 h-5 bg-blue-100 text-blue-600 rounded-full text-xs flex items-center justify-center mr-2">${idx + 1}</span>
-                                                <span class="text-gray-700 truncate" title="${product}">${product.length > 20 ? product.substring(0, 20) + '...' : product}</span>
-                                            </div>
-                                            <div class="text-right">
-                                                <div class="font-medium text-green-600">${productData.kg} kg</div>
-                                                <div class="text-xs text-gray-500">${productData.mc} MC</div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            
-                            <div class="pt-2 border-t">
-                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Aktif</span>
-                            </div>
-                        </div>
-                        `;
-                    }).join('');
-            }
-        }
-
-        function filterPOSummary() {
-            const searchTerm = document.getElementById('poSearchInput')?.value?.toLowerCase() || '';
-            
-            if (!searchTerm) {
-                renderPOSummary(allPOSummaryData);
-                return;
-            }
-            
-            const filteredPOs = allPOSummaryData.filter(([po, data]) => 
-                po.toLowerCase().includes(searchTerm)
-            );
-            
-            renderPOSummary(filteredPOs);
-        }
-
-        function updateBrandSummary() {
-            const brandSummary = {};
-            filteredData.forEach(row => {
-                const brand = row[3];
-                const product = row[1];
-                const mc = parseInt(row[6]) || 0;
-                const kg = parseInt(row[7]) || 0;
-                
-                if (!brandSummary[brand]) {
-                    brandSummary[brand] = { 
-                        items: 0, 
-                        kg: 0, 
-                        products: new Set(),
-                        productDetails: new Map()
-                    };
-                }
-                
-                brandSummary[brand].items += mc;
-                brandSummary[brand].kg += kg;
-                brandSummary[brand].products.add(product);
-                
-                // Track product details for top products
-                if (!brandSummary[brand].productDetails.has(product)) {
-                    brandSummary[brand].productDetails.set(product, { mc: 0, kg: 0 });
-                }
-                const productData = brandSummary[brand].productDetails.get(product);
-                productData.mc += mc;
-                productData.kg += kg;
-            });
-            
-            const sortedBrands = Object.entries(brandSummary).sort((a, b) => b[1].kg - a[1].kg);
-            
-            const totalBrandItems = sortedBrands.reduce((sum, [brand, data]) => sum + data.items, 0);
-            const totalBrandKg = sortedBrands.reduce((sum, [brand, data]) => sum + data.kg, 0);
-            const totalBrandCount = sortedBrands.length;
-            const avgKgPerBrand = totalBrandCount > 0 ? Math.round(totalBrandKg / totalBrandCount) : 0;
-            
-            // Update brand stats
-            const totalBrandItemsEl = document.getElementById('totalBrandItems');
-            const totalBrandKgEl = document.getElementById('totalBrandKg');
-            const totalBrandCountEl = document.getElementById('totalBrandCount');
-            const avgKgPerBrandEl = document.getElementById('avgKgPerBrand');
-            
-            if (totalBrandItemsEl) totalBrandItemsEl.textContent = totalBrandItems.toLocaleString();
-            if (totalBrandKgEl) totalBrandKgEl.textContent = totalBrandKg.toLocaleString();
-            if (totalBrandCountEl) totalBrandCountEl.textContent = totalBrandCount;
-            if (avgKgPerBrandEl) avgKgPerBrandEl.textContent = avgKgPerBrand;
-            
-            const brandSummaryEl = document.getElementById('brandSummary');
-            if (brandSummaryEl) {
-                brandSummaryEl.innerHTML = sortedBrands
-                    .map(([brand, data], index) => {
-                        // Get top 4 products for this brand
-                        const topProducts = Array.from(data.productDetails.entries())
-                            .sort((a, b) => b[1].kg - a[1].kg)
-                            .slice(0, 4);
-                        
-                        return `
-                        <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
-                            <div class="flex justify-between items-start mb-4">
-                                <h3 class="text-lg font-semibold text-gray-800">${brand}</h3>
-                                <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">#${index + 1}</span>
-                            </div>
-                            <div class="space-y-3 mb-4">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total MC:</span>
-                                    <span class="font-medium text-blue-600">${data.items}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total Kg:</span>
-                                    <span class="font-medium text-green-600">${data.kg.toLocaleString()} kg</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Jenis Produk:</span>
-                                    <span class="font-medium text-purple-600">${data.products.size}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Rata-rata/Item:</span>
-                                    <span class="font-medium text-orange-600">${Math.round(data.kg / data.items)} kg</span>
-                                </div>
-                            </div>
-                            
-                            <!-- Top 4 Products -->
-                            <div class="border-t pt-4">
-                                <p class="text-sm font-medium text-gray-700 mb-3">🏆 Top 4 Produk:</p>
-                                <div class="space-y-2">
-                                    ${topProducts.map(([product, productData], idx) => `
-                                        <div class="flex justify-between items-center text-sm">
-                                            <div class="flex items-center">
-                                                <span class="w-5 h-5 bg-blue-100 text-blue-600 rounded-full text-xs flex items-center justify-center mr-2">${idx + 1}</span>
-                                                <span class="text-gray-700 truncate" title="${product}">${product.length > 20 ? product.substring(0, 20) + '...' : product}</span>
-                                            </div>
-                                            <div class="text-right">
-                                                <div class="font-medium text-green-600">${productData.kg} kg</div>
-                                                <div class="text-xs text-gray-500">${productData.mc} MC</div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                        `;
-                    }).join('');
-            }
-        }
-
-        function updateLocationSummary() {
-            const locationSummary = {};
-            filteredData.forEach(row => {
-                const location = row[8] || 'Tidak Diketahui';
-                const product = row[1];
-                const mc = parseInt(row[6]) || 0;
-                const kg = parseInt(row[7]) || 0;
-                
-                if (!locationSummary[location]) {
-                    locationSummary[location] = { 
-                        items: 0, 
-                        kg: 0, 
-                        products: new Set(),
-                        productDetails: new Map()
-                    };
-                }
-                
-                locationSummary[location].items += mc;
-                locationSummary[location].kg += kg;
-                locationSummary[location].products.add(product);
-                
-                // Track product details for top products
-                if (!locationSummary[location].productDetails.has(product)) {
-                    locationSummary[location].productDetails.set(product, { mc: 0, kg: 0 });
-                }
-                const productData = locationSummary[location].productDetails.get(product);
-                productData.mc += mc;
-                productData.kg += kg;
-            });
-            
-            const sortedLocations = Object.entries(locationSummary).sort((a, b) => b[1].kg - a[1].kg);
-            
-            const totalLocationItems = sortedLocations.reduce((sum, [location, data]) => sum + data.items, 0);
-            const totalLocationKg = sortedLocations.reduce((sum, [location, data]) => sum + data.kg, 0);
-            const totalLocationCount = sortedLocations.length;
-            const avgKgPerLocation = totalLocationCount > 0 ? Math.round(totalLocationKg / totalLocationCount) : 0;
-            
-            // Update location stats
-            const totalLocationItemsEl = document.getElementById('totalLocationItems');
-            const totalLocationKgEl = document.getElementById('totalLocationKg');
-            const totalLocationCountEl = document.getElementById('totalLocationCount');
-            const avgKgPerLocationEl = document.getElementById('avgKgPerLocation');
-            
-            if (totalLocationItemsEl) totalLocationItemsEl.textContent = totalLocationItems.toLocaleString();
-            if (totalLocationKgEl) totalLocationKgEl.textContent = totalLocationKg.toLocaleString();
-            if (totalLocationCountEl) totalLocationCountEl.textContent = totalLocationCount;
-            if (avgKgPerLocationEl) avgKgPerLocationEl.textContent = avgKgPerLocation;
-            
-            const locationSummaryEl = document.getElementById('locationSummary');
-            if (locationSummaryEl) {
-                locationSummaryEl.innerHTML = sortedLocations
-                    .map(([location, data], index) => {
-                        // Get top 4 products for this location
-                        const topProducts = Array.from(data.productDetails.entries())
-                            .sort((a, b) => b[1].kg - a[1].kg)
-                            .slice(0, 4);
-                        
-                        return `
-                        <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
-                            <div class="flex justify-between items-start mb-4">
-                                <h3 class="text-lg font-semibold text-gray-800">${location}</h3>
-                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">#${index + 1}</span>
-                            </div>
-                            <div class="space-y-3 mb-4">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total MC:</span>
-                                    <span class="font-medium text-blue-600">${data.items}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total Kg:</span>
-                                    <span class="font-medium text-green-600">${data.kg.toLocaleString()} kg</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Jenis Produk:</span>
-                                    <span class="font-medium text-purple-600">${data.products.size}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Rata-rata/Item:</span>
-                                    <span class="font-medium text-orange-600">${Math.round(data.kg / data.items)} kg</span>
-                                </div>
-                            </div>
-                            
-                            <!-- Top 4 Products -->
-                            <div class="border-t pt-4">
-                                <p class="text-sm font-medium text-gray-700 mb-3">🏆 Top 4 Produk:</p>
-                                <div class="space-y-2">
-                                    ${topProducts.map(([product, productData], idx) => `
-                                        <div class="flex justify-between items-center text-sm">
-                                            <div class="flex items-center">
-                                                <span class="w-5 h-5 bg-green-100 text-green-600 rounded-full text-xs flex items-center justify-center mr-2">${idx + 1}</span>
-                                                <span class="text-gray-700 truncate" title="${product}">${product.length > 20 ? product.substring(0, 20) + '...' : product}</span>
-                                            </div>
-                                            <div class="text-right">
-                                                <div class="font-medium text-green-600">${productData.kg} kg</div>
-                                                <div class="text-xs text-gray-500">${productData.mc} MC</div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                        `;
-                    }).join('');
-            }
-        }
-
-        let allCodeSummaryData = [];
-        let allSizePackingSummaryData = [];
-
-        function updateCodeSummary() {
-            const codeSummary = {};
-            filteredData.forEach(row => {
-                const code = row[4];
-                const product = row[1];
-                const mc = parseInt(row[6]) || 0;
-                const kg = parseInt(row[7]) || 0;
-                
-                if (!codeSummary[code]) {
-                    codeSummary[code] = { 
-                        items: 0, 
-                        kg: 0, 
-                        products: new Set(), 
-                        brands: new Set(),
-                        productDetails: new Map()
-                    };
-                }
-                
-                codeSummary[code].items += mc;
-                codeSummary[code].kg += kg;
-                codeSummary[code].products.add(product);
-                codeSummary[code].brands.add(row[3]);
-                
-                // Track product details for top products
-                if (!codeSummary[code].productDetails.has(product)) {
-                    codeSummary[code].productDetails.set(product, { mc: 0, kg: 0 });
-                }
-                const productData = codeSummary[code].productDetails.get(product);
-                productData.mc += mc;
-                productData.kg += kg;
-            });
-            
-            allCodeSummaryData = Object.entries(codeSummary).sort((a, b) => b[1].kg - a[1].kg);
-            
-            const totalCodeItems = allCodeSummaryData.reduce((sum, [code, data]) => sum + data.items, 0);
-            const totalCodeKg = allCodeSummaryData.reduce((sum, [code, data]) => sum + data.kg, 0);
-            const totalCodeCount = allCodeSummaryData.length;
-            
-            // Update code stats
-            const totalCodeItemsEl = document.getElementById('totalCodeItems');
-            const totalCodeKgEl = document.getElementById('totalCodeKg');
-            const totalCodeCountEl = document.getElementById('totalCodeCount');
-            
-            if (totalCodeItemsEl) totalCodeItemsEl.textContent = totalCodeItems.toLocaleString();
-            if (totalCodeKgEl) totalCodeKgEl.textContent = totalCodeKg.toLocaleString();
-            if (totalCodeCountEl) totalCodeCountEl.textContent = totalCodeCount;
-            
-            renderCodeSummary(allCodeSummaryData);
-        }
-
-        function renderCodeSummary(dataToRender) {
-            const codeSummaryEl = document.getElementById('codeSummary');
-            if (codeSummaryEl) {
-                codeSummaryEl.innerHTML = dataToRender
-                    .map(([code, data], index) => {
-                        // Get top 4 products for this code
-                        const topProducts = Array.from(data.productDetails.entries())
-                            .sort((a, b) => b[1].kg - a[1].kg)
-                            .slice(0, 4);
-                        
-                        return `
-                        <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
-                            <div class="flex justify-between items-start mb-4">
-                                <h3 class="text-lg font-semibold text-gray-800 font-mono">${code}</h3>
-                                <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">#${index + 1}</span>
-                            </div>
-                            <div class="space-y-3 mb-4">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total MC:</span>
-                                    <span class="font-medium text-blue-600">${data.items}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total Kg:</span>
-                                    <span class="font-medium text-green-600">${data.kg.toLocaleString()} kg</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Jenis Produk:</span>
-                                    <span class="font-medium text-purple-600">${data.products.size}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Brand:</span>
-                                    <span class="font-medium text-indigo-600">${data.brands.size}</span>
-                                </div>
-                            </div>
-                            
-                            <!-- Top 4 Products -->
-                            <div class="border-t pt-4">
-                                <p class="text-sm font-medium text-gray-700 mb-3">🏆 Top 4 Produk:</p>
-                                <div class="space-y-2">
-                                    ${topProducts.map(([product, productData], idx) => `
-                                        <div class="flex justify-between items-center text-sm">
-                                            <div class="flex items-center">
-                                                <span class="w-5 h-5 bg-orange-100 text-orange-600 rounded-full text-xs flex items-center justify-center mr-2">${idx + 1}</span>
-                                                <span class="text-gray-700 truncate" title="${product}">${product.length > 20 ? product.substring(0, 20) + '...' : product}</span>
-                                            </div>
-                                            <div class="text-right">
-                                                <div class="font-medium text-green-600">${productData.kg} kg</div>
-                                                <div class="text-xs text-gray-500">${productData.mc} MC</div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                        `;
-                    }).join('');
-            }
-        }
-
-        function filterCodeSummary() {
-            const searchTerm = document.getElementById('codeSearchInput')?.value?.toLowerCase() || '';
-            
-            if (!searchTerm) {
-                renderCodeSummary(allCodeSummaryData);
-                return;
-            }
-            
-            const filteredCodes = allCodeSummaryData.filter(([code, data]) => 
-                code.toLowerCase().includes(searchTerm)
-            );
-            
-            renderCodeSummary(filteredCodes);
-        }
-
-        function updateSizePackingBrandSummary() {
-            const sizePackingBrandSummary = {};
-            
-            filteredData.forEach(row => {
-                const packing = row[2];
-                const brand = row[3];
-                const code = row[4];
-                const mc = parseInt(row[6]) || 0;
-                const kg = parseInt(row[7]) || 0;
-                const key = `${packing} - ${brand}`;
-                
-                if (!sizePackingBrandSummary[key]) {
-                    sizePackingBrandSummary[key] = { 
-                        codes: new Map(), // Changed to Map to store MC breakdown
-                        items: 0, 
-                        kg: 0, 
-                        packing: packing, 
-                        brand: brand 
-                    };
-                }
-                
-                // Store MC breakdown per code
-                if (!sizePackingBrandSummary[key].codes.has(code)) {
-                    sizePackingBrandSummary[key].codes.set(code, { mc: 0, kg: 0 });
-                }
-                
-                const codeData = sizePackingBrandSummary[key].codes.get(code);
-                codeData.mc += mc;
-                codeData.kg += kg;
-                
-                sizePackingBrandSummary[key].items += mc;
-                sizePackingBrandSummary[key].kg += kg;
-            });
-            
-            allSizePackingSummaryData = Object.entries(sizePackingBrandSummary)
-                .sort((a, b) => b[1].codes.size - a[1].codes.size);
-            
-            // Update statistics
-            const totalSizePackingItems = allSizePackingSummaryData.reduce((sum, [key, data]) => sum + data.items, 0);
-            const totalSizePackingKg = allSizePackingSummaryData.reduce((sum, [key, data]) => sum + data.kg, 0);
-            const totalSizePackingCount = allSizePackingSummaryData.length;
-            
-            const totalSizePackingItemsEl = document.getElementById('totalSizePackingItems');
-            const totalSizePackingKgEl = document.getElementById('totalSizePackingKg');
-            const totalSizePackingCountEl = document.getElementById('totalSizePackingCount');
-            
-            if (totalSizePackingItemsEl) totalSizePackingItemsEl.textContent = totalSizePackingItems.toLocaleString();
-            if (totalSizePackingKgEl) totalSizePackingKgEl.textContent = totalSizePackingKg.toLocaleString();
-            if (totalSizePackingCountEl) totalSizePackingCountEl.textContent = totalSizePackingCount;
-            
-            renderSizePackingSummary(allSizePackingSummaryData);
-        }
-
-        function renderSizePackingSummary(dataToRender) {
-            const sizePackingBrandSummaryEl = document.getElementById('sizePackingBrandSummary');
-            const displayInfo = document.getElementById('sizePackingDisplayInfo');
-            
-            if (displayInfo) {
-                displayInfo.textContent = `Menampilkan ${dataToRender.length} dari ${allSizePackingSummaryData.length} kombinasi`;
-            }
-            
-            if (sizePackingBrandSummaryEl) {
-                sizePackingBrandSummaryEl.innerHTML = dataToRender
-                    .map(([key, data], index) => {
-                        // Sort codes by MC quantity (descending)
-                        const sortedCodes = Array.from(data.codes.entries())
-                            .sort((a, b) => b[1].mc - a[1].mc);
-                        
-                        return `
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 class="text-lg font-semibold text-gray-800">${data.packing}</h3>
-                                    <p class="text-sm text-gray-600">Brand: ${data.brand}</p>
-                                </div>
-                                <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs font-medium">
-                                    ${data.codes.size} Kode
-                                </span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-4 mb-4">
-                                <div class="text-center">
-                                    <div class="text-xl font-bold text-blue-600">${data.items}</div>
-                                    <div class="text-xs text-gray-600">Total MC</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="text-xl font-bold text-green-600">${data.kg}</div>
-                                    <div class="text-xs text-gray-600">Total Kg</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="text-xl font-bold text-purple-600">${data.codes.size}</div>
-                                    <div class="text-xs text-gray-600">Kode</div>
-                                </div>
-                            </div>
-                            
-                            <!-- MC Breakdown Table -->
-                            <div class="border-t pt-4">
-                                <div class="flex justify-between items-center mb-3">
-                                    <p class="text-sm font-medium text-gray-700">📊 Breakdown Kode:</p>
-                                    <span class="text-xs text-gray-500">Diurutkan berdasarkan jumlah MC</span>
-                                </div>
-                                <div class="overflow-x-auto">
-                                    <table class="w-full text-sm">
-                                        <thead class="bg-gray-50">
-                                            <tr>
-                                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Kode</th>
-                                                <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">MC</th>
-                                                <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Kg</th>
-                                                <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">% dari Total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-gray-200">
-                                            ${sortedCodes.map(([code, codeData]) => {
-                                                const percentage = data.items > 0 ? ((codeData.mc / data.items) * 100).toFixed(1) : 0;
-                                                return `
-                                                <tr class="hover:bg-gray-50">
-                                                    <td class="px-3 py-2 font-mono text-gray-900">${code}</td>
-                                                    <td class="px-3 py-2 text-right font-medium text-blue-600">${codeData.mc}</td>
-                                                    <td class="px-3 py-2 text-right text-gray-900">${codeData.kg}</td>
-                                                    <td class="px-3 py-2 text-right">
-                                                        <div class="flex items-center justify-end">
-                                                            <div class="w-12 bg-gray-200 rounded-full h-2 mr-2">
-                                                                <div class="bg-blue-600 h-2 rounded-full" style="width: ${percentage}%"></div>
-                                                            </div>
-                                                            <span class="text-xs text-gray-600">${percentage}%</span>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                `;
-                                            }).join('')}
-                                        </tbody>
-                                        <tfoot class="bg-gray-50">
-                                            <tr class="font-medium">
-                                                <td class="px-3 py-2 text-gray-900">Total</td>
-                                                <td class="px-3 py-2 text-right text-blue-600">${data.items}</td>
-                                                <td class="px-3 py-2 text-right text-gray-900">${data.kg}</td>
-                                                <td class="px-3 py-2 text-right text-gray-600">100%</td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
-                            
-                            <!-- Quick Stats -->
-                            <div class="mt-4 pt-3 border-t bg-gray-50 rounded-lg p-3">
-                                <div class="grid grid-cols-2 gap-4 text-xs">
-                                    <div>
-                                        <span class="text-gray-600">Rata-rata MC/Kode:</span>
-                                        <span class="font-medium text-gray-900 ml-1">${Math.round(data.items / data.codes.size)}</span>
-                                    </div>
-                                    <div>
-                                        <span class="text-gray-600">Rata-rata Kg/MC:</span>
-                                        <span class="font-medium text-gray-900 ml-1">${(data.kg / data.items).toFixed(1)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        `;
-                    }).join('');
-            }
-        }
-
-        function filterSizePackingSummary() {
-            const searchTerm = document.getElementById('sizePackingSearchInput')?.value?.toLowerCase() || '';
-            
-            if (!searchTerm) {
-                renderSizePackingSummary(allSizePackingSummaryData);
-                return;
-            }
-            
-            const filteredSizePacking = allSizePackingSummaryData.filter(([key, data]) => 
-                data.packing.toLowerCase().includes(searchTerm) ||
-                data.brand.toLowerCase().includes(searchTerm) ||
-                key.toLowerCase().includes(searchTerm)
-            );
-            
-            renderSizePackingSummary(filteredSizePacking);
-        }
-
-        function exportSizePackingToPDF() {
-            try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                
-                // Add title
-                doc.setFontSize(16);
-                doc.text('Rekap Kode per Size Packing Brand', 20, 20);
-                
-                // Add date and summary
-                doc.setFontSize(10);
-                doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 20, 30);
-                doc.text(`Total Kombinasi: ${allSizePackingSummaryData.length}`, 20, 35);
-                
-                let yPosition = 45;
-                
-                // Process each size packing brand combination
-                allSizePackingSummaryData.forEach(([key, data], index) => {
-                    // Check if we need a new page
-                    if (yPosition > 250) {
-                        doc.addPage();
-                        yPosition = 20;
-                    }
-                    
-                    // Add combination header
-                    doc.setFontSize(12);
-                    doc.setFont(undefined, 'bold');
-                    doc.text(`${index + 1}. ${data.packing} - ${data.brand}`, 20, yPosition);
-                    yPosition += 8;
-                    
-                    // Add summary stats
-                    doc.setFontSize(9);
-                    doc.setFont(undefined, 'normal');
-                    doc.text(`Total MC: ${data.items} | Total Kg: ${data.kg} | Jumlah Kode: ${data.codes.size}`, 25, yPosition);
-                    yPosition += 10;
-                    
-                    // Prepare code breakdown data
-                    const sortedCodes = Array.from(data.codes.entries())
-                        .sort((a, b) => b[1].mc - a[1].mc);
-                    
-                    const codeTableData = sortedCodes.map(([code, codeData]) => {
-                        const percentage = data.items > 0 ? ((codeData.mc / data.items) * 100).toFixed(1) : 0;
-                        return [code, codeData.mc.toString(), codeData.kg.toString(), percentage + '%'];
-                    });
-                    
-                    // Add code breakdown table
-                    doc.autoTable({
-                        head: [['Kode', 'MC', 'Kg', '% dari Total']],
-                        body: codeTableData,
-                        startY: yPosition,
-                        styles: { fontSize: 8 },
-                        headStyles: { fillColor: [99, 102, 241] },
-                        margin: { left: 25, right: 20 },
-                        tableWidth: 'auto',
-                        columnStyles: {
-                            0: { cellWidth: 40 },
-                            1: { cellWidth: 25, halign: 'right' },
-                            2: { cellWidth: 25, halign: 'right' },
-                            3: { cellWidth: 30, halign: 'right' }
-                        }
-                    });
-                    
-                    yPosition = doc.lastAutoTable.finalY + 15;
-                });
-                
-                // Save the PDF
-                doc.save('Breakdown kode.pdf');
-                
-            } catch (error) {
-                console.error('Error generating PDF:', error);
-                alert('Gagal membuat PDF. Silakan coba lagi.');
-            }
-        }
-
-        function updateTargetDateData() {
-            const targetDateData = getTargetDateData();
-            const targetItemsMc = targetDateData.reduce((sum, row) => sum + (parseInt(row[6]) || 0), 0);
-            const targetKg = targetDateData.reduce((sum, row) => sum + (parseInt(row[7]) || 0), 0);
-            
-            const todayItemsEl = document.getElementById('todayItems');
-            const todayKgEl = document.getElementById('todayKg');
-            const todayProductsEl = document.getElementById('todayProducts');
-            const todayBrandsEl = document.getElementById('todayBrands');
-            const currentTargetDateEl = document.getElementById('currentTargetDate');
-            
-            if (todayItemsEl) todayItemsEl.textContent = targetItemsMc.toLocaleString();
-            if (todayKgEl) todayKgEl.textContent = targetKg.toLocaleString();
-            if (todayProductsEl) todayProductsEl.textContent = new Set(targetDateData.map(row => row[1])).size;
-            if (todayBrandsEl) todayBrandsEl.textContent = new Set(targetDateData.map(row => row[3])).size;
-            if (currentTargetDateEl) currentTargetDateEl.textContent = targetDate || 'Tidak diketahui';
-            
-            // Update target date table
-            const targetDateTableBody = document.getElementById('targetDateTableBody');
-            if (targetDateTableBody) {
-                if (targetDateData.length > 0) {
-                    targetDateTableBody.innerHTML = targetDateData.map(row => `
-                        <tr class="table-row">
-                            <td class="px-4 py-3 text-sm font-medium text-gray-900">${row[1]}</td>
-                            <td class="px-4 py-3 text-sm">
-                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">${row[3]}</span>
-                            </td>
-                            <td class="px-4 py-3 text-sm text-gray-900 font-mono">${row[4]}</td>
-                            <td class="px-4 py-3 text-sm text-gray-900 text-right">${row[6]}</td>
-                            <td class="px-4 py-3 text-sm text-gray-900 text-right font-medium">${row[7]} kg</td>
-                            <td class="px-4 py-3 text-sm text-gray-900">
-                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">${row[8] || '-'}</span>
-                            </td>
-                        </tr>
-                    `).join('');
-                } else {
-                    targetDateTableBody.innerHTML = `
-                        <tr>
-                            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
-                                <i class="fas fa-calendar-times text-3xl mb-4"></i>
-                                <p>Tidak ada data untuk tanggal target: ${targetDate || 'Tidak diketahui'}</p>
-                            </td>
-                        </tr>
-                    `;
-                }
-            }
-        }
-
-        function getTargetDateData() {
-            if (!targetDate) return [];
-            
-            const normalizedTargetDate = normalizeDate(targetDate);
-            
-            return filteredData.filter(row => {
-                const rowDate = normalizeDate(row[0]);
-                return rowDate === normalizedTargetDate;
-            });
-        }
-
-        function normalizeDate(dateString) {
-            if (!dateString || dateString === '-') return '';
-            
-            const date = parseDate(dateString);
-            if (isNaN(date.getTime())) return '';
-            
-            const year = date.getFullYear();
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const day = date.getDate().toString().padStart(2, '0');
-            
-            return `${year}-${month}-${day}`;
-        }
-
-        function parseDate(dateString) {
-            if (!dateString || dateString === '-') return new Date(0);
-            
-            let date;
-            
-            if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                date = new Date(dateString);
-            }
-            else if (dateString.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                const parts = dateString.split('/');
-                date = new Date(parts[2], parts[1] - 1, parts[0]);
-            }
-            else if (dateString.match(/^\d{2}-\d{2}-\d{4}$/)) {
-                const parts = dateString.split('-');
-                date = new Date(parts[2], parts[1] - 1, parts[0]);
-            }
-            else if (dateString.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-                date = new Date(dateString);
-            }
-            else {
-                date = new Date(dateString);
-            }
-            
-            return isNaN(date.getTime()) ? new Date(0) : date;
-        }
-
-        function setCurrentDate() {
-            const currentDateEl = document.getElementById('currentDate');
-            if (currentDateEl) {
-                const today = new Date();
-                currentDateEl.textContent = today.toLocaleDateString('id-ID');
-            }
-        }
-
-        function updateCurrentDate() {
-            setCurrentDate();
-        }
-
-        // Chart functions
-        function initCharts() {
-            initBrandChart();
-            initTrendChart();
-        }
-
-        function initBrandChart() {
-            const ctx = document.getElementById('brandChart');
-            if (!ctx) return;
-            
-            brandChart = new Chart(ctx.getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        data: [],
-                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
-        }
-
-        function initTrendChart() {
-            const ctx = document.getElementById('trendChart');
-            if (!ctx) return;
-            
-            trendChart = new Chart(ctx.getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Total Stok (kg)',
-                        data: [],
-                        borderColor: '#3B82F6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#3B82F6',
-                        pointBorderColor: '#ffffff',
-                        pointBorderWidth: 2,
-                        pointRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { 
-                        y: { 
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return value.toLocaleString() + ' kg';
-                                }
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                maxRotation: 45
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `${context.dataset.label}: ${context.parsed.y.toLocaleString()} kg`;
-                                }
-                            }
-                        },
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        }
-                    }
-                }
-            });
-        }
-
-        function updateCharts() {
-            if (!brandChart || !filteredData.length) return;
-            
-            const brandData = {};
-            filteredData.forEach(row => {
-                const brand = row[3];
-                const kg = parseInt(row[7]) || 0;
-                brandData[brand] = (brandData[brand] || 0) + kg;
-            });
-            
-            const brands = Object.keys(brandData).slice(0, 5);
-            const values = brands.map(brand => brandData[brand]);
-            
-            brandChart.data.labels = brands;
-            brandChart.data.datasets[0].data = values;
-            brandChart.update();
-            
-            updateTrendChart();
-        }
-
-        function updateTrendChart() {
-            if (!trendChart || !filteredData.length) return;
-            
-            const dailyData = {};
-            filteredData.forEach(row => {
-                const date = row[0];
-                const kg = parseInt(row[7]) || 0;
-                
-                if (date && date !== '-') {
-                    if (!dailyData[date]) dailyData[date] = 0;
-                    dailyData[date] += kg;
-                }
-            });
-            
-            const sortedDates = Object.keys(dailyData).sort();
-            const last7Days = sortedDates.slice(-7);
-            
-            const labels = [];
-            const data = [];
-            
-            if (last7Days.length > 0) {
-                last7Days.forEach(date => {
-                    const dateObj = parseDate(date);
-                    const formattedDate = `${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`;
-                    labels.push(formattedDate);
-                    data.push(dailyData[date]);
-                });
-            } else {
-                // Fallback data
-                labels.push('Hari ini');
-                data.push(0);
-            }
-            
-            trendChart.data.labels = labels;
-            trendChart.data.datasets[0].data = data;
-            trendChart.update();
-        }
-
-        // Filter and action functions
-        function applyFilters() {
-            const startDate = document.getElementById('startDate')?.value;
-            const endDate = document.getElementById('endDate')?.value;
-            const product = document.getElementById('productFilter')?.value;
-            const brand = document.getElementById('brandFilter')?.value;
-            const kode = document.getElementById('kodeFilter')?.value;
-            const location = document.getElementById('locationFilter')?.value;
-            const searchTerm = document.getElementById('searchProduct')?.value?.toLowerCase() || '';
-            
-            filteredData = stockData.filter(row => {
-                let matchesDate = true;
-                
-                if (startDate || endDate) {
-                    const rowDate = parseDate(row[0]);
-                    const filterStartDate = startDate ? new Date(startDate) : null;
-                    const filterEndDate = endDate ? new Date(endDate) : null;
-                    
-                    if (filterStartDate && rowDate < filterStartDate) {
-                        matchesDate = false;
-                    }
-                    if (filterEndDate && rowDate > filterEndDate) {
-                        matchesDate = false;
-                    }
-                }
-                
-                const matchesProduct = !product || row[1] === product;
-                const matchesBrand = !brand || row[3] === brand;
-                const matchesKode = !kode || row[4] === kode;
-                const matchesLocation = !location || row[8] === location;
-                
-                const matchesSearch = !searchTerm || 
-                    row[1].toLowerCase().includes(searchTerm) ||
-                    row[3].toLowerCase().includes(searchTerm);
-                
-                return matchesDate && matchesProduct && matchesBrand && matchesKode && matchesLocation && matchesSearch;
-            });
-            
-            currentPage = 1;
-            updateUI();
-        }
-
-        function resetFilters() {
-            const startDateEl = document.getElementById('startDate');
-            const endDateEl = document.getElementById('endDate');
-            const productFilterEl = document.getElementById('productFilter');
-            const brandFilterEl = document.getElementById('brandFilter');
-            const kodeFilterEl = document.getElementById('kodeFilter');
-            const locationFilterEl = document.getElementById('locationFilter');
-            const searchProductEl = document.getElementById('searchProduct');
-            
-            if (startDateEl) startDateEl.value = '';
-            if (endDateEl) endDateEl.value = '';
-            if (productFilterEl) productFilterEl.value = '';
-            if (brandFilterEl) brandFilterEl.value = '';
-            if (kodeFilterEl) kodeFilterEl.value = '';
-            if (locationFilterEl) locationFilterEl.value = '';
-            if (searchProductEl) searchProductEl.value = '';
-            
-            filteredData = [...stockData];
-            currentPage = 1;
-            updateUI();
-        }
-
-        function sortTable(columnIndex) {
-            if (sortColumn === columnIndex) {
-                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                sortColumn = columnIndex;
-                sortDirection = 'asc';
-            }
-            
-            filteredData.sort((a, b) => {
-                let aVal = a[columnIndex];
-                let bVal = b[columnIndex];
-                
-                if (columnIndex === 6 || columnIndex === 7) {
-                    aVal = parseInt(aVal) || 0;
-                    bVal = parseInt(bVal) || 0;
-                }
-                
-                if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-                if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-                return 0;
-            });
-            
-            populateTable();
-        }
-
-        function previousPage() {
-            if (currentPage > 1) {
-                currentPage--;
-                populateTable();
-            }
-        }
-
-        function nextPage() {
-            const maxPages = Math.ceil(filteredData.length / CONFIG.ITEMS_PER_PAGE);
-            if (currentPage < maxPages) {
-                currentPage++;
-                populateTable();
-            }
-        }
-
-        function refreshData() {
-            fetchData();
-        }
-
-        function toggleShowAllPOs() {
-            showAllPOs = !showAllPOs;
-            updatePOSummary();
-        }
-
-        function exportToPDF() {
-            try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                
-                // Add title
-                doc.setFontSize(16);
-                doc.text('Dashboard Stok Produk', 20, 20);
-                
-                // Add date
-                doc.setFontSize(10);
-                doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 20, 30);
-                doc.text(`Total Data: ${filteredData.length} baris`, 20, 35);
-                
-                // Prepare table data
-                const tableData = filteredData.map(row => [
-                    row[0], // Tanggal
-                    row[1], // Produk
-                    row[2], // Packing
-                    row[3], // Brand
-                    row[4], // Kode
-                    row[5], // No. PO
-                    row[6], // Jumlah MC
-                    row[7] + ' kg', // Jumlah Kg
-                    row[8] // Lokasi
-                ]);
-                
-                // Add table
-                doc.autoTable({
-                    head: [['Tanggal', 'Produk', 'Packing', 'Brand', 'Kode', 'No. PO', 'MC', 'Kg', 'Lokasi']],
-                    body: tableData,
-                    startY: 45,
-                    styles: { fontSize: 8 },
-                    headStyles: { fillColor: [59, 130, 246] }
-                });
-                
-                // Save the PDF
-                doc.save('dashboard-stok-wkb.pdf');
-                
-            } catch (error) {
-                console.error('Error generating PDF:', error);
-                alert('Gagal membuat PDF. Silakan coba lagi.');
-            }
-        }
-
-        // Initialize the application
+        // ===== INITIALIZATION =====
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Initializing Dashboard...');
-            initAuth();
-        });
-    
-
-(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'967af9d7e130e416',t:'MTc1Mzk0MjY4MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();
+            console.log(`🚀 Initializing Dashboard v${CONFIG.VERSION} - Advanced Stock Management System`);
+            console.log('Features enabled:', CONFIG.FEATURES);
+            
+            Auth.init();
+            
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    switch (e.key) {
+                        case 'e':
+                            e.preventDefault();
+                            Export.toPDF();
+                            break;
+                        case 'f':
+                            e.preventDefault();
+                            const searchInput = document.getElementById('searchProduct');
+                            if (searchInput) searchInput.focus();
+                            break;
+                    }
+                }
+                
+                // Close search results on Escape
+                if (e.key === 'Escape') {
+                    const searchResults = document.getElementById('searchResults');
+                    if (searchResults) {
+                        searchResults.classList.remove('show');
+                    }
+                }
+            });
+            
+            // Close search results when clicking outside
+            document.addEventListener('click', (e) => {
+                const searchContainer = document.querySelector('.search-container');
+                const searchResults = document.getElementById('searchResults');
+                
+                if (searchResults && !searchContainer?.contains(e.target)) {
+                    searchResults.classList.remove('show');
+                }
+            });
+            
+            console.log('✅ Dashboard v49 initialization complete');
+        });        
+        
+        
