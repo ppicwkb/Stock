@@ -1,27 +1,31 @@
     // ===== ENHANCED CONFIGURATION =====
         const CONFIG = {
     VERSION: '49.0.0',
-    EXCEL_FILE_PATH: 'WKB.xlsx', // ✅ Ganti jadi path file lokal
+    // SHEET_ID: '18ga4stLBiKWujBryPQHUHrUzgYjprFJEKvUWSd3Zcks',
+    // SHEET_NAME: 'WKB',
+    // API_KEY: 'AIzaSyBBY9oqeEjjpVnIXOhdkhR6xuTsCr5gYU8',
+    JSON_URL: 'data.json', // Tambahkan ini sebagai pengganti Google Sheets
     ITEMS_PER_PAGE: window.innerWidth <= 768 ? 5 : 10,
     MAX_ITEMS_PER_PAGE: 100,
     AUTO_REFRESH_INTERVAL: 600000, // 5 minutes
     ANIMATION_DURATION: 300,
     TARGET_DATE_CELL: 'J1',
 
-    USERS: {
-        'ppic': { password: '4', role: 'ppic', name: 'Planning Production', permissions: ['all'] },
-        'qc': { password: '2', role: 'qc', name: 'Quality Control', permissions: ['read', 'export', 'analytics'] },
-        'admin': { password: '1', role: 'admin', name: 'Administrasi', permissions: ['read'] }
-    },
+            USERS: {
+                'ppic': { password: '4', role: 'ppic', name: 'Planning Production', permissions: ['all'] },
+                'qc': { password: '2', role: 'qc', name: 'Quality Control', permissions: ['read', 'export', 'analytics'] },
+                'admin': { password: '1', role: 'admin', name: 'Administrasi', permissions: ['read'] }
+            },
+            
+            FEATURES: {
+                REAL_TIME_UPDATES: true,
+                ADVANCED_ANALYTICS: true,
+                EXPORT_CAPABILITIES: true,
+                SMART_SEARCH: true,
+                AUTO_BACKUP: true
+            }
+        };
 
-    FEATURES: {
-        REAL_TIME_UPDATES: true,
-        ADVANCED_ANALYTICS: true,
-        EXPORT_CAPABILITIES: true,
-        SMART_SEARCH: true,
-        AUTO_BACKUP: true
-    }
-};
         // ===== ENHANCED GLOBAL STATE =====
         const State = {
             version: CONFIG.VERSION,
@@ -212,7 +216,7 @@
                 }
             },
 
-           startAutoRefresh() {
+            startAutoRefresh() {
     if (State.autoRefreshTimer) {
         clearInterval(State.autoRefreshTimer);
     }
@@ -221,39 +225,39 @@
         State.autoRefreshTimer = setInterval(() => {
             if (!document.hidden) {
                 console.log('🔄 Auto-refreshing data...');
-                DataLoader.loadExcelFromLocal(true); // ✅ ganti fungsi ini
+                DataLoader.loadFromJSON(true); // Ganti dari loadFromGoogleSheets
             }
         }, CONFIG.AUTO_REFRESH_INTERVAL);
     }
 },
 
-           logout() {
-    if (confirm('Are you sure you want to logout?')) {
-        if (State.autoRefreshTimer) {
-            clearInterval(State.autoRefreshTimer);
-        }
-
-        localStorage.removeItem('dashboardUser_v49');
-        State.currentUser = null;
-
-        Utils.showNotification('info', '👋 Logged out successfully');
-        setTimeout(() => {
-            location.reload();
-        }, 1000);
-    }
-}
+            logout() {
+                if (confirm('Are you sure you want to logout?')) {
+                    if (State.autoRefreshTimer) {
+                        clearInterval(State.autoRefreshTimer);
+                    }
+                    
+                    localStorage.removeItem('dashboardUser_v49');
+                    State.currentUser = null;
+                    
+                    Utils.showNotification('info', '👋 Logged out successfully');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                }
+            }
         };
 
         // ===== ENHANCED DATA LOADER MODULE =====
         const DataLoader = {
     init() {
-        console.log('📂 Inisialisasi sistem data dari file Excel lokal...');
-        this.loadFromExcelFile();
+        console.log('📊 Initializing JSON data loading system...');
+        this.loadFromJSON();
     },
 
-    async loadFromExcelFile(isAutoRefresh = false) {
+    async loadFromJSON(isAutoRefresh = false) {
         const startTime = performance.now();
-        console.log('📥 Loading data from local Excel file...', isAutoRefresh ? '(Auto-refresh)' : '(Manual)');
+        console.log('🔄 Loading data from JSON file...', isAutoRefresh ? '(Auto-refresh)' : '(Manual)');
 
         const elements = {
             dataStatus: document.getElementById('dataStatus'),
@@ -265,132 +269,201 @@
 
         if (!isAutoRefresh) {
             this.updateLoadingUI(elements, 'loading');
-            this.updateProgress(elements, 10, 'Fetching Excel file...');
         }
 
         try {
-            const response = await fetch('WKB.xlsx'); // file Excel di root
-            const arrayBuffer = await response.arrayBuffer();
-            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            if (!isAutoRefresh) {
+                this.updateProgress(elements, 20, 'Connecting to local JSON...');
+            }
 
-            const sheetName = CONFIG.SHEET_NAME || workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            const response = await fetch(CONFIG.JSON_URL);
 
-            const targetCell = worksheet[CONFIG.TARGET_DATE_CELL];
-            if (targetCell && targetCell.v) {
-                State.targetDate = String(targetCell.v);
-                console.log('📅 Target date from Excel:', State.targetDate);
+            if (!response.ok) {
+                throw new Error(`JSON file error: ${response.status} ${response.statusText}`);
+            }
+
+            const jsonData = await response.json();
+
+            if (!jsonData || !jsonData.values || jsonData.values.length === 0) {
+                throw new Error('No data found in JSON file');
             }
 
             if (!isAutoRefresh) {
-                this.updateProgress(elements, 60, 'Processing Excel data...');
+                this.updateProgress(elements, 70, 'Processing JSON data...');
             }
 
-            const processedData = this.processSheetData(rawData);
+            // Optional: ambil target date dari JSON jika tersedia
+            let targetDate = null;
+            if (jsonData.targetDate) {
+                targetDate = jsonData.targetDate;
+            } else if (jsonData.values.length > 1 && jsonData.values[1][0]) {
+                targetDate = jsonData.values[1][0];
+            }
 
-            State.performance.loadTime = performance.now() - startTime;
-            State.performance.dataSize = JSON.stringify(rawData).length;
+            if (targetDate) {
+                State.targetDate = targetDate;
+                console.log('📅 Target date from JSON:', targetDate);
+            }
 
             if (!isAutoRefresh) {
-                this.updateProgress(elements, 90, 'Finalizing...');
+                this.updateProgress(elements, 90, 'Formatting data...');
             }
 
+            const processedData = this.processSheetData(jsonData.values);
+
+            if (processedData.length === 0) {
+                throw new Error('No valid data found in JSON');
+            }
+
+            // Update performance metrics
+            const loadTime = performance.now() - startTime;
+            State.performance.loadTime = loadTime;
+            State.performance.dataSize = JSON.stringify(jsonData.values).length;
+
+            console.log(`✅ Successfully loaded ${processedData.length} records from JSON`);
             this.completeLoading(processedData, elements, isAutoRefresh);
 
         } catch (error) {
-            console.error('❌ Gagal membaca file Excel lokal:', error);
-            Utils.showNotification('error', '⚠️ Gagal membaca file Excel lokal');
-            this.loadSampleData(elements);
-        }
-    },
-
-    processSheetData(sheetValues) {
-        const processedData = [];
-        let validRows = 0;
-        let skippedRows = 0;
-
-        for (let i = 1; i < sheetValues.length; i++) {
-            const row = sheetValues[i];
-            while (row.length < 9) row.push('');
-
-            const hasDate = row[0] && String(row[0]).trim() !== '';
-            const hasProduct = row[1] && String(row[1]).trim() !== '';
-            const hasMC = row[6] && !isNaN(parseFloat(row[6])) && parseFloat(row[6]) > 0;
-
-            if (hasDate && hasProduct && hasMC) {
-                const formattedRow = [
-                    Utils.formatDate(row[0]),
-                    String(row[1] || '').trim(),
-                    String(row[2] || '').trim(),
-                    String(row[3] || '').trim(),
-                    String(row[4] || '').trim(),
-                    String(row[5] || '').trim(),
-                    parseFloat(row[6]) || 0,
-                    parseFloat(row[7]) || 0,
-                    String(row[8] || '').trim()
-                ];
-                processedData.push(formattedRow);
-                validRows++;
+            console.error('❌ Error loading data from JSON:', error);
+            if (!isAutoRefresh) {
+                this.loadSampleData(elements);
             } else {
-                skippedRows++;
+                Utils.showNotification('error', '⚠️ Auto-refresh failed - using cached data');
             }
         }
-
-        console.log("✅ Sheet processing complete: ${validRows} valid rows, ${skippedRows} skipped");
-        return processedData;
     },
 
-    updateLoadingUI(elements, state) {
-        if (!elements) return;
-        if (state === 'loading') {
-            elements.loadProgress?.classList.remove('hidden');
-            elements.dataStatus?.classList.add('text-yellow-500');
-            elements.refreshBtn?.classList.add('opacity-50');
-        } else if (state === 'complete') {
-            elements.loadProgress?.classList.add('hidden');
-            elements.dataStatus?.classList.remove('text-yellow-500');
-            elements.dataStatus?.classList.add('text-green-500');
-            elements.refreshBtn?.classList.remove('opacity-50');
-        }
-    },
-
-    updateProgress(elements, percent, text) {
-        if (!elements) return;
-        elements.progressBar.style.width = `${percent}%`;
-        elements.progressText.textContent = text;
-    },
-
-    completeLoading(data, elements, isAutoRefresh = false) {
-        State.stockData = data;
-        State.filteredData = [...data];
-        State.lastUpdate = new Date().toISOString();
-        this.updateLoadingUI(elements, 'complete');
-
-        if (!isAutoRefresh) {
-            Utils.showNotification('success', `✅ Loaded ${data.length} items from Excel`);
-        }
-        Render.renderTable();
-        Analytics.calculate();
-    },
-
-    loadSampleData(elements) {
-        const sample = [
-            ['01/08/2024', 'Sample A', '250ml', 'BrandX', 'ABC123', 'PO001', 120, 50, 'Gudang A'],
-            ['02/08/2024', 'Sample B', '500ml', 'BrandY', 'DEF456', 'PO002', 100, 40, 'Gudang B']
-        ];
-        const processed = this.processSheetData([['Tanggal', 'Produk', 'Kemasan', 'Brand', 'Kode', 'PO', 'MC', 'KG', 'Lokasi'], ...sample]);
-        this.completeLoading(processed, elements, false);
-    }
-};
-
-            
+            processSheetData(sheetValues) {
+                const processedData = [];
+                let validRows = 0;
+                let skippedRows = 0;
                 
-               
+                // Skip header row (index 0)
+                for (let i = 1; i < sheetValues.length; i++) {
+                    const row = sheetValues[i];
+                    
+                    // Ensure we have at least 9 columns, pad with empty strings if needed
+                    while (row.length < 9) {
+                        row.push('');
+                    }
+                    
+                    // Check if required fields exist
+                    const hasDate = row[0] && String(row[0]).trim() !== '';
+                    const hasProduct = row[1] && String(row[1]).trim() !== '';
+                    const hasMC = row[6] && !isNaN(parseFloat(row[6])) && parseFloat(row[6]) > 0;
+                    
+                    if (hasDate && hasProduct && hasMC) {
+                        const formattedRow = [
+                            Utils.formatDate(row[0]), // tanggal
+                            String(row[1] || '').trim(), // produk
+                            String(row[2] || '').trim(), // kemasan
+                            String(row[3] || '').trim(), // brand
+                            String(row[4] || '').trim(), // kode
+                            String(row[5] || '').trim(), // po
+                            parseFloat(row[6]) || 0, // mc
+                            parseFloat(row[7]) || 0, // kg
+                            String(row[8] || '').trim() // lokasi
+                        ];
+                        processedData.push(formattedRow);
+                        validRows++;
+                    } else {
+                        skippedRows++;
+                    }
+                }
+                
+                console.log("Sheet processing complete: ${validRows} valid rows, ${skippedRows} skipped");
+                return processedData;
+            },
+
+                
+                loadSampleData(elements) {
+                console.log('📝 Loading sample data...');
+                
+                const sampleData = [
+                    ['29/01/2024', 'PREMIUM RICE', '25 KG', 'BRAND ALPHA', 'PR001', 'PO-2024-001', 150, 3750, 'WAREHOUSE A'],
+                    ['29/01/2024', 'SUGAR WHITE', '1 KG', 'BRAND BETA', 'SW002', 'PO-2024-002', 300, 300, 'WAREHOUSE B'],
+                    ['30/01/2024', 'COOKING OIL', '2 L', 'BRAND GAMMA', 'CO003', 'PO-2024-003', 200, 400, 'WAREHOUSE A'],
+                    ['30/01/2024', 'WHEAT FLOUR', '1 KG', 'BRAND ALPHA', 'WF004', 'PO-2024-001', 400, 400, 'WAREHOUSE C'],
+                    ['31/01/2024', 'COFFEE POWDER', '200 G', 'BRAND DELTA', 'CP005', 'PO-2024-004', 120, 24, 'WAREHOUSE B'],
+                    ['31/01/2024', 'TEA BAGS', '25 PCS', 'BRAND BETA', 'TB006', 'PO-2024-002', 180, 45, 'WAREHOUSE A'],
+                    ['01/02/2024', 'MILK POWDER', '400 G', 'BRAND EPSILON', 'MP007', 'PO-2024-005', 100, 40, 'WAREHOUSE C'],
+                    ['01/02/2024', 'BUTTER', '200 G', 'BRAND GAMMA', 'BT008', 'PO-2024-003', 80, 16, 'WAREHOUSE B'],
+                    ['02/02/2024', 'CHEESE SLICES', '200 G', 'BRAND ZETA', 'CS009', 'PO-2024-006', 60, 12, 'WAREHOUSE A'],
+                    ['02/02/2024', 'BREAD LOAF', '400 G', 'BRAND ETA', 'BL010', 'PO-2024-007', 100, 40, 'WAREHOUSE C']
+                ];
+                
+                State.targetDate = '29/01/2024';
+                this.completeLoading(sampleData, elements, false);
+            },
+
+            completeLoading(data, elements, isAutoRefresh) {
+                const previousDataLength = State.stockData.length;
+                State.stockData = [...data];
+                State.filteredData = [...State.stockData];
+                State.lastUpdate = new Date();
+                
+                if (!isAutoRefresh) {
+                    this.updateProgress(elements, 100, 'Complete!');
+                    
+                    setTimeout(() => {
+                        this.updateLoadingUI(elements, 'complete');
+                        UI.updateAll();
+                        
+                        const message = previousDataLength === 0 
+                            ? `✅ Successfully loaded ${State.stockData.length} records!`
+                            : `🔄 Data refreshed: ${State.stockData.length} records`;
+                        
+                        Utils.showNotification('success', message);
+                    }, 1000);
+                } else {
+                    UI.updateAll();
+                    
+                    if (previousDataLength !== data.length) {
+                        Utils.showNotification('info', `🔄 Auto-refresh: ${data.length} records updated`);
+                    }
+                }
+                
                 // Update last update time
-                
-            
-        
+                Utils.updateLastUpdateTime();
+            },
+
+            updateLoadingUI(elements, state) {
+                switch (state) {
+                    case 'loading':
+                        if (elements.dataStatus) {
+                            elements.dataStatus.textContent = 'Loading data...';
+                            elements.dataStatus.className = 'text-lg font-bold text-blue-600 mb-2';
+                        }
+                        if (elements.loadProgress) elements.loadProgress.classList.remove('hidden');
+                        if (elements.refreshBtn) elements.refreshBtn.disabled = true;
+                        if (elements.progressBar) elements.progressBar.style.width = '0%';
+                        if (elements.progressText) elements.progressText.textContent = 'Connecting to CDN...';
+                        break;
+                        
+                    case 'complete':
+                        if (elements.loadProgress) elements.loadProgress.classList.add('hidden');
+                        if (elements.refreshBtn) elements.refreshBtn.disabled = false;
+                        if (elements.dataStatus) {
+                            elements.dataStatus.textContent = 'System Ready';
+                            elements.dataStatus.className = 'text-lg font-bold text-green-600 mb-2';
+                        }
+                        
+                        const dataInfo = document.getElementById('dataInfo');
+                        const connectionStatus = document.getElementById('connectionStatus');
+                        const connectionText = document.getElementById('connectionText');
+                        
+                        if (dataInfo) dataInfo.textContent = `${State.stockData.length} records available`;
+                        if (connectionStatus) connectionStatus.className = 'w-3 h-3 bg-green-500 rounded-full shadow-sm animate-pulse';
+                        if (connectionText) connectionText.textContent = 'Online';
+                        break;
+                }
+            },
+
+            updateProgress(elements, percentage, text) {
+                if (elements.progressBar) elements.progressBar.style.width = `${percentage}%`;
+                if (elements.progressText) elements.progressText.textContent = text;
+            }
+        };
 
         // ===== ENHANCED UI MODULE =====
         const UI = {
