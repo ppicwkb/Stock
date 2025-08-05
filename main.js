@@ -1,15 +1,13 @@
     // ===== ENHANCED CONFIGURATION =====
         const CONFIG = {
     VERSION: '49.0.0',
-    // SHEET_ID: '18ga4stLBiKWujBryPQHUHrUzgYjprFJEKvUWSd3Zcks',
-    // SHEET_NAME: 'WKB',
-    // API_KEY: 'AIzaSyBBY9oqeEjjpVnIXOhdkhR6xuTsCr5gYU8',
+    
     JSON_URL: 'data.json', // Tambahkan ini sebagai pengganti Google Sheets
     ITEMS_PER_PAGE: window.innerWidth <= 768 ? 5 : 10,
     MAX_ITEMS_PER_PAGE: 100,
     AUTO_REFRESH_INTERVAL: 600000, // 5 minutes
     ANIMATION_DURATION: 300,
-    TARGET_DATE_CELL: 'J1',
+    TARGET_DATE_CELL: 'targetdate',
 
             USERS: {
                 'ppic': { password: '4', role: 'ppic', name: 'Planning Production', permissions: ['all'] },
@@ -293,17 +291,23 @@
             }
 
             // Optional: ambil target date dari JSON jika tersedia
-            let targetDate = null;
-            if (jsonData.targetDate) {
-                targetDate = jsonData.targetDate;
-            } else if (jsonData.values.length > 1 && jsonData.values[1][0]) {
-                targetDate = jsonData.values[1][0];
-            }
+           let targetDate = null;
 
-            if (targetDate) {
-                State.targetDate = targetDate;
-                console.log('📅 Target date from JSON:', targetDate);
-            }
+// Cek apakah ada key 'targetdate' (huruf kecil semua)
+if (jsonData.targetdate) {
+    targetDate = jsonData.targetdate;
+}
+// Fallback: kalau targetdate nggak ada, coba ambil dari baris pertama data.values
+else if (jsonData.values && jsonData.values.length > 1 && jsonData.values[1][0]) {
+    targetDate = jsonData.values[1][0];
+}
+
+if (targetDate) {
+    State.targetDate = targetDate;
+    console.log('📅 Target date from JSON:', targetDate);
+}
+
+            
 
             if (!isAutoRefresh) {
                 this.updateProgress(elements, 90, 'Formatting data...');
@@ -379,18 +383,7 @@
                 loadSampleData(elements) {
                 console.log('📝 Loading sample data...');
                 
-                const sampleData = [
-                    ['29/01/2024', 'PREMIUM RICE', '25 KG', 'BRAND ALPHA', 'PR001', 'PO-2024-001', 150, 3750, 'WAREHOUSE A'],
-                    ['29/01/2024', 'SUGAR WHITE', '1 KG', 'BRAND BETA', 'SW002', 'PO-2024-002', 300, 300, 'WAREHOUSE B'],
-                    ['30/01/2024', 'COOKING OIL', '2 L', 'BRAND GAMMA', 'CO003', 'PO-2024-003', 200, 400, 'WAREHOUSE A'],
-                    ['30/01/2024', 'WHEAT FLOUR', '1 KG', 'BRAND ALPHA', 'WF004', 'PO-2024-001', 400, 400, 'WAREHOUSE C'],
-                    ['31/01/2024', 'COFFEE POWDER', '200 G', 'BRAND DELTA', 'CP005', 'PO-2024-004', 120, 24, 'WAREHOUSE B'],
-                    ['31/01/2024', 'TEA BAGS', '25 PCS', 'BRAND BETA', 'TB006', 'PO-2024-002', 180, 45, 'WAREHOUSE A'],
-                    ['01/02/2024', 'MILK POWDER', '400 G', 'BRAND EPSILON', 'MP007', 'PO-2024-005', 100, 40, 'WAREHOUSE C'],
-                    ['01/02/2024', 'BUTTER', '200 G', 'BRAND GAMMA', 'BT008', 'PO-2024-003', 80, 16, 'WAREHOUSE B'],
-                    ['02/02/2024', 'CHEESE SLICES', '200 G', 'BRAND ZETA', 'CS009', 'PO-2024-006', 60, 12, 'WAREHOUSE A'],
-                    ['02/02/2024', 'BREAD LOAF', '400 G', 'BRAND ETA', 'BL010', 'PO-2024-007', 100, 40, 'WAREHOUSE C']
-                ];
+                
                 
                 State.targetDate = '29/01/2024';
                 this.completeLoading(sampleData, elements, false);
@@ -2480,11 +2473,27 @@
             },
 
             updateLastUpdateTime() {
-                const lastUpdateElement = document.getElementById('lastUpdateTime');
-                if (lastUpdateElement && State.targetDate) {
-                    lastUpdateElement.textContent = `Update: ${State.targetDate}`;
-                }
-            }
+    const el = document.getElementById('lastUpdateTime');
+    if (!el) return;
+
+    const rawDate = State.targetDate;
+    if (!rawDate) {
+        el.textContent = 'Belum ada tanggal update';
+        return;
+    }
+
+    const date = new Date(rawDate);
+    if (isNaN(date)) {
+        el.textContent = `Update: ${rawDate}`; // fallback
+    } else {
+        const formatted = date.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
+        });
+        el.textContent = `Update: ${formatted}`;
+    }
+}
         };
 
         // ===== PERFORMANCE MONITORING MODULE =====
