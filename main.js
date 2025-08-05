@@ -7,7 +7,7 @@
     MAX_ITEMS_PER_PAGE: 100,
     AUTO_REFRESH_INTERVAL: 600000, // 5 minutes
     ANIMATION_DURATION: 300,
-    TARGET_DATE_CELL: 'targetdate',
+    TARGET_DATE_CELL: 'targetDate',
 
             USERS: {
                 'ppic': { password: '4', role: 'ppic', name: 'Planning Production', permissions: ['all'] },
