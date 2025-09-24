@@ -3,1049 +3,1961 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Stock WKB</title>
+    <title>Monitoring Stok Produksi</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    
-    <link rel="stylesheet" href="style.css">
-    
+    <style>
+        /* Modern Corporate Design System */
+        :root {
+            --primary-50: #eff6ff;
+            --primary-100: #dbeafe;
+            --primary-500: #3b82f6;
+            --primary-600: #2563eb;
+            --primary-700: #1d4ed8;
+            --primary-900: #1e3a8a;
+            
+            --success-50: #ecfdf5;
+            --success-100: #d1fae5;
+            --success-500: #10b981;
+            --success-600: #059669;
+            
+            --warning-50: #fffbeb;
+            --warning-100: #fef3c7;
+            --warning-500: #f59e0b;
+            --warning-600: #d97706;
+            
+            --error-50: #fef2f2;
+            --error-100: #fee2e2;
+            --error-500: #ef4444;
+            --error-600: #dc2626;
+            
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Glass morphism effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .glass-dark {
+            background: rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Animations */
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200px 0; }
+            100% { background-position: calc(200px + 100%) 0; }
+        }
+        
+        .animate-slide-up {
+            animation: slideUp 0.6s ease-out;
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+        
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        /* Modern Cards */
+        .modern-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+        
+        .modern-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+        
+        /* Mobile-first Data Cards */
+        .data-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: var(--shadow-md);
+            margin-bottom: 1rem;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        
+        .data-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-500), var(--primary-600));
+        }
+        
+        .data-card.status-error::before {
+            background: linear-gradient(90deg, var(--error-500), var(--error-600));
+        }
+        
+        .data-card.status-success::before {
+            background: linear-gradient(90deg, var(--success-500), var(--success-600));
+        }
+        
+        .data-card.status-warning::before {
+            background: linear-gradient(90deg, var(--warning-500), var(--warning-600));
+        }
+        
+        .data-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .data-card-header {
+            padding: 1.25rem 1.5rem 0.75rem;
+            border-bottom: 1px solid var(--gray-100);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(248, 250, 252, 0.8) 100%);
+        }
+        
+        .data-card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin: 0;
+            line-height: 1.4;
+        }
+        
+        .data-card-subtitle {
+            font-size: 0.875rem;
+            color: var(--gray-500);
+            margin: 0.25rem 0 0;
+        }
+        
+        .data-card-body {
+            padding: 1.25rem 1.5rem;
+        }
+        
+        .data-field {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--gray-100);
+            transition: background-color 0.2s ease;
+        }
+        
+        .data-field:last-child {
+            border-bottom: none;
+        }
+        
+        .data-field:hover {
+            background-color: var(--gray-50);
+            margin: 0 -1.5rem;
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+            border-radius: var(--radius-md);
+        }
+        
+        .data-label {
+            font-weight: 600;
+            color: var(--gray-700);
+            font-size: 0.875rem;
+            flex: 1;
+        }
+        
+        .data-value {
+            color: var(--gray-900);
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-align: right;
+            flex: 1;
+            word-break: break-word;
+        }
+        
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.375rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s ease;
+        }
+        
+        .status-badge.match-yes {
+            background: var(--success-100);
+            color: var(--success-600);
+            border: 1px solid var(--success-200);
+        }
+        
+        .status-badge.match-no {
+            background: var(--error-100);
+            color: var(--error-600);
+            border: 1px solid var(--error-200);
+        }
+        
+        .status-badge.match-partial {
+            background: var(--warning-100);
+            color: var(--warning-600);
+            border: 1px solid var(--warning-200);
+        }
+        
+        /* Modern Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-lg);
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn:hover::before {
+            left: 100%;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--gray-100), var(--gray-200));
+            color: var(--gray-700);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, var(--gray-200), var(--gray-300));
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, var(--success-500), var(--success-600));
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, var(--success-600), #047857);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+        
+        /* Sheet Selector */
+        .sheet-selector {
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-lg);
+            padding: 0.25rem;
+            gap: 0.25rem;
+        }
+        
+        .sheet-tab {
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            background: transparent;
+        }
+        
+        .sheet-tab.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .sheet-tab:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        /* KPI Cards */
+        .kpi-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: var(--shadow-lg);
+            padding: 1.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-500), var(--primary-600));
+        }
+        
+        .kpi-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+        
+        .kpi-icon {
+            width: 3rem;
+            height: 3rem;
+            border-radius: var(--radius-xl);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary-100), var(--primary-200));
+        }
+        
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--gray-900);
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+        
+        .kpi-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        /* Connection Status */
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .status-dot {
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .status-dot.connected {
+            background: var(--success-500);
+            box-shadow: 0 0 0 2px var(--success-100);
+        }
+        
+        .status-dot.error {
+            background: var(--error-500);
+            box-shadow: 0 0 0 2px var(--error-100);
+        }
+        
+        .status-dot.loading {
+            background: var(--warning-500);
+            box-shadow: 0 0 0 2px var(--warning-100);
+            animation: pulse 2s infinite;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+            backdrop-filter: blur(20px);
+            margin: 2rem auto;
+            padding: 2rem;
+            border-radius: var(--radius-xl);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        .close {
+            color: var(--gray-400);
+            float: right;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s ease;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--gray-100);
+        }
+        
+        .close:hover {
+            color: var(--gray-600);
+            background: var(--gray-200);
+        }
+        
+        /* Form Elements */
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            font-size: 0.875rem;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+        }
+        
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        /* Loading States */
+        .skeleton {
+            background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+            background-size: 200px 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: var(--radius-md);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+            
+            .kpi-card {
+                padding: 1rem;
+            }
+            
+            .kpi-icon {
+                width: 2.5rem;
+                height: 2.5rem;
+                margin-bottom: 0.75rem;
+            }
+            
+            .kpi-value {
+                font-size: 1.5rem;
+            }
+            
+            .data-card-header {
+                padding: 1rem 1.25rem 0.5rem;
+            }
+            
+            .data-card-body {
+                padding: 1rem 1.25rem;
+            }
+            
+            .data-field:hover {
+                margin: 0 -1.25rem;
+                padding-left: 1.25rem;
+                padding-right: 1.25rem;
+            }
+            
+            .sheet-selector {
+                flex-wrap: wrap;
+            }
+            
+            .sheet-tab {
+                flex: 1;
+                min-width: 0;
+                text-align: center;
+            }
+        }
+        
+        @media (min-width: 769px) {
+            .kpi-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
 </head>
-<body>
-    <!-- Login Modal -->
-    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm">
-        <div class="advanced-card p-8 w-full max-w-md mx-4 animate-slideInUp">
-            <div class="text-center mb-8">
-                <div class="mx-auto w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl flex items-center justify-center mb-6 shadow-2xl transform hover:scale-105 transition-transform">
-                    <div class="text-white text-4xl">
-                        <i class="fas fa-chart-line"></i>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="glass-dark sticky top-0 z-40 animate-fade-in">
+        <div class="container mx-auto px-4 py-2">
+            <!-- Header Toggle Bar -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-lg md:text-xl font-bold text-white">Monitoring Stok Produksi</h1>
                     </div>
                 </div>
-                <h2 class="text-4xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">Dashboard WKB</h2>
                 
-                <div class="mt-4 flex items-center justify-center space-x-2">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span class="text-sm text-gray-500 font-medium">Stock Management</span>
-                </div>
+                <button id="headerToggle" class="text-white hover:text-gray-200 transition-colors p-2 rounded-lg hover:bg-white/10">
+                    <svg id="headerToggleIcon" class="w-5 h-5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
             </div>
             
-            <form id="loginForm" class="space-y-6">
-                <div class="space-y-2">
-                    <label class="block text-sm font-bold text-gray-700">Username</label>
-                    <div class="relative">
-                        <input type="text" id="username" required 
-                               class="form-advanced w-full pl-12 pr-4 py-4"
-                               placeholder="Enter your username" autocomplete="username">
-                        <i class="fas fa-user absolute left-4 top-5 text-blue-500"></i>
+            <!-- Collapsible Header Content -->
+            <div id="headerContent" class="mt-4 space-y-4">
+                <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                    <!-- Sheet Selector -->
+                    <div class="sheet-selector">
+                        <button class="sheet-tab active" data-sheet="KONVEN">KONVEN</button>
+                        <button class="sheet-tab" data-sheet="NOBASHI">NOBASHI</button>
+                        <button class="sheet-tab" data-sheet="SUSHI EBI">SUSHI EBI</button>
                     </div>
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-bold text-gray-700">Password</label>
-                    <div class="relative">
-                        <input type="password" id="password" required 
-                               class="form-advanced w-full pl-12 pr-12 py-4"
-                               placeholder="Enter your password" autocomplete="current-password">
-                        <i class="fas fa-lock absolute left-4 top-5 text-blue-500"></i>
-                        <button type="button" onclick="togglePassword()" class="absolute right-4 top-5 text-gray-400 hover:text-blue-500 transition-colors">
-                            <i id="passwordToggle" class="fas fa-eye"></i>
+                    
+                    <div class="flex items-center space-x-3">
+                        <div id="connectionStatus" class="connection-status">
+                            <div id="statusIndicator" class="status-dot loading"></div>
+                            <span id="statusText" class="text-sm text-white/90 hidden md:inline">Connecting...</span>
+                        </div>
+                        <button id="refreshBtn" class="btn btn-primary text-sm">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span class="hidden md:inline">Refresh</span>
                         </button>
                     </div>
                 </div>
-                
-                <div id="loginError" class="hidden bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-triangle text-red-500 mr-3"></i>
-                        <span class="text-red-700 font-medium">Invalid credentials! Please try again.</span>
-                    </div>
-                </div>
-                
-                <button type="submit" class="btn-advanced w-full py-4 text-lg font-bold shadow-xl">
-                    <span id="loginButtonText" class="flex items-center justify-center">
-                        <i class="fas fa-sign-in-alt mr-3"></i>Access Dashboard
-                    </span>
-                    <div id="loginSpinner" class="hidden flex items-center justify-center">
-                        <div class="loading-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full mr-3"></div>
-                        Authenticating...
-                    </div>
-                </button>
-            </form>
-            
-            <div class="mt-8 pt-6 border-t border-gray-200">
-                <div class="advanced-card p-6">
-                    <h4 class="text-sm font-bold text-gray-700 mb-4 flex items-center">
-                        <i class="fas fa-key text-blue-500 mr-2"></i>Login Sesuai Kebutuhan :
-                    </h4>
-                                           
-                    <div class="flex justify-between items-center p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl">
-                            <span class="font-semibold text-gray-700"> </span>
-                           
-                            
-                        </div>
-                        
-                    </div>
-                </div>
+                <div id="lastUpdate" class="text-xs text-white/60 text-center md:text-left"></div>
             </div>
         </div>
-    </div>
-
-    <!-- Mobile Header -->
-    <div class="md:hidden glass-morphism shadow-xl px-6 py-4 flex items-center justify-between relative z-40">
-        <button onclick="UI.toggleSidebar()" class="text-blue-600 hover:text-purple-600 transition-colors p-2 rounded-lg hover:bg-blue-50">
-            <i class="fas fa-bars text-xl"></i>
-        </button>
-        <div class="flex items-center">
-            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mr-3 shadow-lg">
-                <i class="fas fa-chart-line text-white text-lg"></i>
-            </div>
-            <div>
-                <h1 class="text-lg font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Dashboard WKB</h1>
-                <p class="text-xs text-gray-500 font-medium">Stock Management</p>
-                              </div>
-        </div>
-        <div class="w-10"></div>
-    </div>
-
-    <!-- Mobile Overlay -->
-    <div class="mobile-overlay fixed inset-0 bg-black bg-opacity-50 z-30 hidden backdrop-blur-sm" onclick="UI.closeSidebar()"></div>
-
-    <!-- Advanced Sidebar -->
-    <div class="advanced-sidebar fixed left-0 top-0 h-full w-80 z-40">
-        <div class="p-6 border-b border-gray-200">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                    <div class="w-14 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mr-4 shadow-xl">
-                        <i class="fas fa-chart-line text-white text-2xl"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-1xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Dashboard wkb</h1>
-                       
-                    </div>
-                </div>
-                <button onclick="UI.closeSidebar()" class="md:hidden text-gray-600 hover:text-purple-600 transition-colors p-2 rounded-lg hover:bg-gray-100">
-                    <i class="fas fa-times text-lg"></i>
-                </button>
-            </div>
-        </div>
-        
-        <!-- User Info -->
-        <div id="userInfo" class="px-6 py-6 border-b border-gray-200 hidden">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                    <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
-                        <i class="fas fa-user text-white"></i>
-                    </div>
-                    <div>
-                        <div class="text-sm font-bold text-gray-800" id="userName">-</div>
-                        <div class="text-xs text-gray-500 capitalize font-semibold" id="userRole">-</div>
-                    </div>
-                </div>
-                <button onclick="Auth.logout()" class="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50" title="Logout">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
-            </div>
-        </div>
-        
-        <nav class="mt-8 px-6 space-y-4">
-            <a href="#" class="sidebar-item active flex items-center px-6 py-4 text-blue rounded-2xl font-bold shadow-lg" onclick="Navigation.showSection('dashboard')">
-                <div class="w-8 h-8 mr-4 flex items-center justify-center">
-                    <i class="fas fa-tachometer-alt text-xl"></i>
-                </div>
-                <div>
-                    <div class="text-sm">Main Dashboard</div>
-                    <div class="text-xs opacity-75">Stock Overview</div>
-                </div>
-            </a>
-            
-            <a href="#" class="sidebar-item flex items-center px-6 py-4 text-gray-700 rounded-2xl font-bold hover:text-white" onclick="Navigation.showSection('analytics')">
-                <div class="w-8 h-8 mr-4 flex items-center justify-center">
-                    <i class="fas fa-chart-bar text-xl"></i>
-                </div>
-                <div>
-                    <div class="text-sm">Analytics</div>
-                    <div class="text-xs opacity-75">Advanced Reports</div>
-                </div>
-            </a>
-            
-            <a href="#" class="sidebar-item flex items-center px-6 py-4 text-gray-700 rounded-2xl font-bold hover:text-white" onclick="Navigation.showSection('rekap-po')">
-                <div class="w-8 h-8 mr-4 flex items-center justify-center">
-                    <i class="fas fa-file-invoice text-xl"></i>
-                </div>
-                <div>
-                    <div class="text-sm">PO Summary</div>
-                    <div class="text-xs opacity-75">Purchase Orders</div>
-                </div>
-            </a>
-            
-            <a href="#" class="sidebar-item flex items-center px-6 py-4 text-gray-700 rounded-2xl font-bold hover:text-white" onclick="Navigation.showSection('rekap-brand')">
-                <div class="w-8 h-8 mr-4 flex items-center justify-center">
-                    <i class="fas fa-tags text-xl"></i>
-                </div>
-                <div>
-                    <div class="text-sm">Brand Analysis</div>
-                    <div class="text-xs opacity-75">Brand Performance</div>
-                </div>
-            </a>
-            
-            <a href="#" class="sidebar-item flex items-center px-6 py-4 text-gray-700 rounded-2xl font-bold hover:text-white" onclick="Navigation.showSection('rekap-lokasi')">
-                <div class="w-8 h-8 mr-4 flex items-center justify-center">
-                    <i class="fas fa-map-marker-alt text-xl"></i>
-                </div>
-                <div>
-                    <div class="text-sm">Location Tracking</div>
-                    <div class="text-xs opacity-75">Cold Storage Data</div>
-                </div>
-            </a>
-            
-            <a href="#" class="sidebar-item flex items-center px-6 py-4 text-gray-700 rounded-2xl font-bold hover:text-white" onclick="Navigation.showSection('code-breakdown')">
-                <div class="w-8 h-8 mr-4 flex items-center justify-center">
-                    <i class="fas fa-code text-xl"></i>
-                </div>
-                <div>
-                    <div class="text-sm">Code Breakdown</div>
-                    <div class="text-xs opacity-75">Product Codes</div>
-                </div>
-            </a>
-            
-            <a href="#" class="sidebar-item flex items-center px-6 py-4 text-gray-700 rounded-2xl font-bold hover:text-white" onclick="Navigation.showSection('data-entry-summary')">
-                <div class="w-8 h-8 mr-4 flex items-center justify-center">
-                    <i class="fas fa-calendar-alt text-xl"></i>
-                </div>
-                <div>
-                    <div class="text-sm">Data Entry Summary</div>
-                    <div class="text-xs opacity-75">Daily Breakdown</div>
-                </div>
-            </a>
-            
-          
-        </nav>
-        
-
-    </div>
+    </header>
 
     <!-- Main Content -->
-    <div class="main-content ml-80 p-8 min-h-screen">
-        <!-- Dashboard Section -->
-        <div id="dashboard-section" class="section animate-fadeIn">
-            <!-- Header -->
-            <div class="mb-10">
-                <div class="flex items-center justify-between mb-6">
+    <main class="container mx-auto px-4 py-6 space-y-6">
+        <!-- Filters -->
+        <div class="modern-card animate-slide-up">
+            <div class="flex items-center justify-between p-6 cursor-pointer" onclick="toggleFilters()">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                        </svg>
+                    </div>
                     <div>
-                        <h2 class="text-5xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">Dashboard WKB</h2>
-                        <p class="text-gray-600 text-xl font-semibold">Stock Management & Analytics</p>
+                        <h2 class="text-lg font-bold text-gray-900">Filter </h2>
+                        <p class="text-sm text-gray-600">  </p>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <svg id="filterToggleIcon" class="w-5 h-5 text-gray-500 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </div>
+            </div>
+            <div id="filterContent" class="hidden px-6 pb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Filter Brand</label>
+                        <select id="brandFilter" class="form-select">
+                            <option value="">Semua Brand</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Pencarian Global</label>
+                        <input type="text" id="globalSearch" placeholder="Cari data..." class="form-input">
+                    </div>
+                </div>
+                <div class="mt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div id="filterInfo" class="text-sm text-gray-600 font-medium">
+                        Menampilkan semua data
+                    </div>
+                    <button id="clearFilters" class="btn btn-secondary text-sm">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        Hapus Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid grid gap-4 animate-slide-up" style="animation-delay: 0.1s;">
+            <div class="kpi-card">
+                <div class="kpi-icon">
+                    <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="kpi-value" id="totalOrder">0</div>
+                <div class="kpi-label">Total Order</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background: linear-gradient(135deg, var(--success-100), var(--success-200));">
+                    <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <div class="kpi-value" id="totalStock">0</div>
+                <div class="kpi-label">Total Stock</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background: linear-gradient(135deg, var(--warning-100), var(--warning-200));">
+                    <svg class="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92z"/>
+                    </svg>
+                </div>
+                <div class="kpi-value" id="totalKarantina">0</div>
+                <div class="kpi-label">Total Karantina</div>
+            </div>
+
+            <div class="kpi-card" id="kekuranganCard" style="display: none;">
+                <div class="kpi-icon" style="background: linear-gradient(135deg, var(--error-100), var(--error-200));">
+                    <svg class="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                    </svg>
+                </div>
+                <div class="kpi-value" id="totalKekurangan">0</div>
+                <div class="kpi-label">Kekurangan MC</div>
+            </div>
+        </div>
+
+        <!-- Charts Link -->
+        <div class="modern-card p-6 animate-slide-up" style="animation-delay: 0.2s;">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center mr-4">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Analisis Grafik</h3>
+                        <p class="text-sm text-gray-600"> </p>
+                    </div>
+                </div>
+                <button id="chartsBtn" class="btn btn-primary">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+                    </svg>
+                    Lihat Grafik
+                </button>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="modern-card p-6 animate-slide-up" style="animation-delay: 0.3s;">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center mr-3">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Data <span id="currentSheetName">KONVEN</span></h3>
+                        <p class="text-sm text-gray-600"> </p>
+                    </div>
+                </div>
+                <button id="exportBtn" class="btn btn-success">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Export Excel
+                </button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table id="dataTable" class="display" style="width:100%">
+                    <thead>
+                        <tr id="tableHeaders">
+                            <!-- Headers will be dynamically generated -->
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Mobile View -->
+            <div id="mobileView" style="display: none;">
+                <div id="mobileCards" class="space-y-4"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Charts Page -->
+    <div id="chartsPage" class="fixed inset-0 bg-gray-50 z-50 overflow-y-auto" style="display: none;">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <!-- Charts Header -->
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Analisis Grafik <span id="chartsSheetName">KONVEN</span></h1>
+                    <p class="text-gray-600">Visualisasi data dalam bentuk grafik interaktif</p>
+                </div>
+                <button id="backToMain" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>Kembali</span>
+                </button>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-semibold mb-4">Order vs Stock per Brand</h3>
+                    <div class="relative h-64">
+                        <canvas id="orderChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-semibold mb-4">Distribusi Assortment</h3>
+                    <div class="relative h-64">
+                        <canvas id="assortmentChart"></canvas>
                     </div>
                 </div>
             </div>
 
-
-
-            <!-- Advanced Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.1s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-blue-600 mb-2" id="totalItems">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Total MC</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-boxes text-white text-2xl"></i>
-                        </div>
-                    </div>
-                    <div class="flex items-center">
-                        <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                        <span class="text-xs text-gray-500 font-semibold">Master Cartons</span>
+            <!-- Additional Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-semibold mb-4">Status Karantina</h3>
+                    <div class="relative h-64">
+                        <canvas id="karantinaChart"></canvas>
                     </div>
                 </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.2s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-green-600 mb-2" id="totalKg">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Total Weight</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-weight text-white text-2xl"></i>
-                        </div>
-                    </div>
-                    <div class="flex items-center">
-                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                        <span class="text-xs text-gray-500 font-semibold">Kilograms</span>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.3s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-purple-600 mb-2" id="uniqueProducts">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Products</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-cube text-white text-2xl"></i>
-                        </div>
-                    </div>
-                    <div class="flex items-center">
-                        <div class="w-2 h-2 bg-purple-500 rounded-full mr-2"></div>
-                        <span class="text-xs text-gray-500 font-semibold">Unique Items</span>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.4s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-orange-600 mb-2" id="uniqueBrands">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Brands</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-tags text-white text-2xl"></i>
-                        </div>
-                    </div>
-                    <div class="flex items-center">
-                        <div class="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
-                        <span class="text-xs text-gray-500 font-semibold">Brand Count</span>
+                <div class="bg-white rounded-lg shadow-sm p-6" id="kekuranganChartContainer" style="display: none;">
+                  
+                    <div class="relative h-64">
+                        <canvas id="kekuranganChart"></canvas>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Advanced Filters -->
-            <div class="advanced-card p-8 mb-10 animate-slideInUp" style="animation-delay: 0.5s">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-2xl font-black text-gray-800">Filters</h3>
-                    <div class="flex items-center space-x-4">
-                        <div class="flex items-center space-x-2">
-                          
-                                   </div>
-                                   
-          <div class="flex items-center space-x-2">
-                            <div id="connectionStatus" class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                            <span id="connectionText" class="text-sm font-semibold text-gray-600">ppic</span>
-                        </div>
-                        <div id="lastUpdateTime" class="text-xs text-gray-500 font-medium">
-                            Entry Date: Loading...
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-3">Start Date</label>
-                        <input type="date" id="startDate" class="form-advanced w-full">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-3">End Date</label>
-                        <input type="date" id="endDate" class="form-advanced w-full">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-3">Brand Selection</label>
-                        <select id="brandFilter" class="form-advanced w-full">
-                            <option value="">All Brands</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div class="search-container">
-                        <label class="block text-sm font-bold text-gray-700 mb-3">Smart Search</label>
-                        <div class="relative">
-                            <input type="text" id="searchProduct" placeholder="Search products, brands, packaging, or PO numbers..." 
-                                   class="form-advanced w-full pl-12 pr-4" onkeyup="SmartSearch.performSearch()">
-                            <i class="fas fa-search absolute left-4 top-4 text-blue-500"></i>
-                        </div>
-                        <div id="searchResults" class="search-results"></div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-3">Location Filter</label>
-                        <select id="locationFilter" class="form-advanced w-full">
-                            <option value="">All Locations</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-3">Sort By</label>
-                        <select id="sortBy" class="form-advanced w-full" onchange="SmartSearch.applySorting()">
-                            <option value="date-desc">Date (Newest First)</option>
-                            <option value="date-asc">Date (Oldest First)</option>
-                            <option value="product-asc">Product Name (A-Z)</option>
-                            <option value="product-desc">Product Name (Z-A)</option>
-                            <option value="brand-asc">Brand (A-Z)</option>
-                            <option value="brand-desc">Brand (Z-A)</option>
-                            <option value="mc-desc">MC Quantity (High to Low)</option>
-                            <option value="mc-asc">MC Quantity (Low to High)</option>
-                            <option value="kg-desc">Weight (Heavy to Light)</option>
-                            <option value="kg-asc">Weight (Light to Heavy)</option>
-                            <option value="po-asc">PO Number (A-Z)</option>
-                            <option value="po-desc">PO Number (Z-A)</option>
-                        </select>
-                    </div>
+    <!-- Modal Detail -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 class="text-xl font-bold mb-4">Detail Item</h2>
+            <div id="modalContent"></div>
+        </div>
+    </div>
 
-                </div>
-                
-                <div class="flex flex-wrap gap-4">
-                    <button onclick="Filters.apply()" class="btn-advanced px-8 py-3 shadow-xl">
-                        <i class="fas fa-filter mr-2"></i>Apply Filters
-                    </button>
-                    <button onclick="Filters.reset()" class="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-xl hover:shadow-2xl">
-                        <i class="fas fa-undo mr-2"></i>Reset All
-                    </button>
-                    <button onclick="DataLoader.loadFromGoogleSheets()" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-xl hover:shadow-2xl" id="refreshBtn">
-                        <i class="fas fa-sync-alt mr-2"></i>Refresh Data
-                    </button>
-                    <button onclick="Export.toPDF()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-xl hover:shadow-2xl">
-                        <i class="fas fa-file-pdf mr-2"></i>Export PDF
-                    </button>
-                </div>
-            </div>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <span class="text-gray-700">Memuat data...</span>
+        </div>
+    </div>
 
+    <script>
+        // Configuration
+        const API_KEY = 'AIzaSyBhiKDVDH4fle5_EqAIaA05YjpxVMEBYZM';
+        const SPREADSHEET_ID = '1j08GsRihHa9yhqkRM3ITCTarY04LMQhh4FHSrR8mJJg';
+        
+        // Sheet configurations - will be dynamically updated based on actual sheet data
+        let SHEET_CONFIGS = {
+            'KONVEN': {
+                name: 'KONVEN',
+                columns: [],
+                mobileFields: [],
+                hasKekurangan: false
+            },
+            'NOBASHI': {
+                name: 'NOBASHI',
+                columns: [],
+                mobileFields: [],
+                hasKekurangan: false
+            },
+            'SUSHI EBI': {
+                name: 'SUSHI EBI',
+                columns: [],
+                mobileFields: [],
+                hasKekurangan: false
+            }
+        };
+        
+        let currentSheet = 'KONVEN';
+        let allData = [];
+        let filteredData = [];
+        let dataTable;
+        let orderChart, assortmentChart, karantinaChart, kekuranganChart;
 
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            loadData();
+        });
+        
+        function toggleFilters() {
+            const filterContent = document.getElementById('filterContent');
+            const toggleIcon = document.getElementById('filterToggleIcon');
+            
+            if (filterContent.classList.contains('hidden')) {
+                filterContent.classList.remove('hidden');
+                toggleIcon.style.transform = 'rotate(180deg)';
+            } else {
+                filterContent.classList.add('hidden');
+                toggleIcon.style.transform = 'rotate(0deg)';
+            }
+        }
 
-            <!-- Advanced Data Table -->
-            <div class="advanced-table animate-slideInUp" style="animation-delay: 0.7s">
-                <div class="table-header px-4 md:px-8 py-6">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg md:text-xl font-black">Stock Data</h3>
-                        <div class="flex items-center space-x-4">
-                            <span class="text-xs md:text-sm font-semibold opacity-90">Real-time Data</span>
-                            <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                        </div>
-                    </div>
-                </div>
+        function initializeEventListeners() {
+            // Header toggle
+            document.getElementById('headerToggle').addEventListener('click', toggleHeader);
+            
+            // Sheet selector
+            document.querySelectorAll('.sheet-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const sheet = this.dataset.sheet;
+                    switchSheet(sheet);
+                });
+            });
+            
+            document.getElementById('refreshBtn').addEventListener('click', loadData);
+
+            document.getElementById('brandFilter').addEventListener('change', applyFilters);
+            document.getElementById('globalSearch').addEventListener('input', applyFilters);
+            document.getElementById('clearFilters').addEventListener('click', clearAllFilters);
+            document.getElementById('exportBtn').addEventListener('click', exportToExcel);
+            
+            // Navigation events
+            document.getElementById('chartsBtn').addEventListener('click', showChartsPage);
+            document.getElementById('backToMain').addEventListener('click', showMainPage);
+            
+            // Modal events
+            document.querySelector('.close').addEventListener('click', closeModal);
+            window.addEventListener('click', function(event) {
+                if (event.target === document.getElementById('detailModal')) {
+                    closeModal();
+                }
+            });
+
+            // Responsive handling
+            window.addEventListener('resize', function() {
+                updateTable();
+            });
+        }
+        
+        function toggleHeader() {
+            const headerContent = document.getElementById('headerContent');
+            const toggleIcon = document.getElementById('headerToggleIcon');
+            
+            if (headerContent.style.display === 'none') {
+                headerContent.style.display = 'block';
+                toggleIcon.style.transform = 'rotate(0deg)';
+            } else {
+                headerContent.style.display = 'none';
+                toggleIcon.style.transform = 'rotate(-90deg)';
+            }
+        }
+        
+        function updateSheetConfig(sheetName, headers) {
+            if (!SHEET_CONFIGS[sheetName]) {
+                SHEET_CONFIGS[sheetName] = {
+                    name: sheetName,
+                    columns: [],
+                    mobileFields: [],
+                    hasKekurangan: false
+                };
+            }
+            
+            // Update columns based on actual headers
+            SHEET_CONFIGS[sheetName].columns = [...headers];
+            
+            // Check if sheet has KEKURANGAN MC column
+            SHEET_CONFIGS[sheetName].hasKekurangan = headers.some(header => 
+                header.toLowerCase().includes('kekurangan') && header.toLowerCase().includes('mc')
+            );
+            
+            // Define mobile fields - prioritize important columns
+            const priorityFields = ['BRAND SIZE', 'BRAND', 'ORDER', 'STOCK', 'ASSORTMENT', 'ETD', 'KARANTINA'];
+            const mobileFields = [];
+            
+            // Add priority fields that exist in headers
+            priorityFields.forEach(field => {
+                if (headers.includes(field)) {
+                    mobileFields.push(field);
+                }
+            });
+            
+            // Add KEKURANGAN MC if it exists
+            if (SHEET_CONFIGS[sheetName].hasKekurangan) {
+                const kekuranganField = headers.find(header => 
+                    header.toLowerCase().includes('kekurangan') && header.toLowerCase().includes('mc')
+                );
+                if (kekuranganField && !mobileFields.includes(kekuranganField)) {
+                    mobileFields.push(kekuranganField);
+                }
+            }
+            
+            SHEET_CONFIGS[sheetName].mobileFields = mobileFields;
+            
+            console.log(`Updated config for ${sheetName}:`, SHEET_CONFIGS[sheetName]);
+        }
+
+        function switchSheet(sheetName) {
+            if (currentSheet === sheetName) return;
+            
+            currentSheet = sheetName;
+            
+            // Update active tab
+            document.querySelectorAll('.sheet-tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.dataset.sheet === sheetName) {
+                    tab.classList.add('active');
+                }
+            });
+            
+            // Update sheet name displays
+            document.getElementById('currentSheetName').textContent = sheetName;
+            document.getElementById('chartsSheetName').textContent = sheetName;
+            
+            // Show/hide kekurangan card based on sheet
+            const kekuranganCard = document.getElementById('kekuranganCard');
+            if (SHEET_CONFIGS[sheetName].hasKekurangan) {
+                kekuranganCard.style.display = 'block';
+            } else {
+                kekuranganCard.style.display = 'none';
+            }
+            
+            // Load data for the new sheet
+            loadData();
+        }
+
+        async function loadData() {
+            showLoading(true);
+            updateConnectionStatus('loading', 'Memuat data dari Google Sheets...');
+            
+            try {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${currentSheet}?key=${API_KEY}`;
+                const response = await fetch(url);
                 
-                <!-- Desktop Table -->
-                <div class="desktop-table overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gradient-to-r from-gray-50 to-blue-50">
-                            <tr>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-blue-100 transition-colors" onclick="Table.sort(0)">
-                                    Date <i class="fas fa-sort ml-2 text-blue-500"></i>
-                                </th>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-blue-100 transition-colors" onclick="Table.sort(1)">
-                                    Product <i class="fas fa-sort ml-2 text-blue-500"></i>
-                                </th>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-blue-100 transition-colors" onclick="Table.sort(2)">
-                                    Packaging <i class="fas fa-sort ml-2 text-blue-500"></i>
-                                </th>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-blue-100 transition-colors" onclick="Table.sort(3)">
-                                    Brand <i class="fas fa-sort ml-2 text-blue-500"></i>
-                                </th>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-blue-100 transition-colors" onclick="Table.sort(4)">
-                                    Code <i class="fas fa-sort ml-2 text-blue-500"></i>
-                                </th>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-blue-100 transition-colors" onclick="Table.sort(5)">
-                                    PO Number <i class="fas fa-sort ml-2 text-blue-500"></i>
-                                </th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-blue-100 transition-colors" onclick="Table.sort(6)">
-                                    MC Qty <i class="fas fa-sort ml-2 text-blue-500"></i>
-                                </th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-blue-100 transition-colors" onclick="Table.sort(7)">
-                                    Weight (Kg) <i class="fas fa-sort ml-2 text-blue-500"></i>
-                                </th>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-blue-100 transition-colors" onclick="Table.sort(8)">
-                                    Location <i class="fas fa-sort ml-2 text-blue-500"></i>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="stockTableBody" class="divide-y divide-gray-100">
-                            <!-- Data populated by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 
-                <!-- Mobile Table -->
-                <div class="mobile-table p-4" id="mobileStockTable">
-                    <!-- Mobile cards populated by JavaScript -->
-                </div>
+                const data = await response.json();
                 
-                <!-- Advanced Pagination -->
-                <div class="bg-gradient-to-r from-gray-50 to-blue-50 px-4 md:px-8 py-6 border-t border-gray-200">
-                    <!-- Mobile Pagination -->
-                    <div class="md:hidden">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="text-xs text-gray-700 font-bold">
-                                <span id="showingStartMobile" class="font-black text-blue-600">0</span> - <span id="showingEndMobile" class="font-black text-blue-600">0</span> of <span id="totalRecordsMobile" class="font-black text-blue-600">0</span>
-                            </div>
-                            <select id="itemsPerPageMobile" onchange="Table.changeItemsPerPage()" class="form-advanced text-xs py-1 px-2">
-                                <option value="5">5</option>
-                                <option value="10">10</option>
-                                <option value="25">25</option>
-                            </select>
-                        </div>
-                        <div class="flex items-center justify-center space-x-2">
-                            <button onclick="Table.firstPage()" class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 transition-colors shadow-sm font-bold text-sm" id="firstBtnMobile">
-                                <i class="fas fa-angle-double-left text-blue-600"></i>
-                            </button>
-                            <button onclick="Table.previousPage()" class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 transition-colors shadow-sm font-bold text-sm" id="prevBtnMobile">
-                                <i class="fas fa-angle-left text-blue-600"></i>
-                            </button>
-                            <span id="pageInfoMobile" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-black shadow-lg text-sm">1</span>
-                            <button onclick="Table.nextPage()" class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 transition-colors shadow-sm font-bold text-sm" id="nextBtnMobile">
-                                <i class="fas fa-angle-right text-blue-600"></i>
-                            </button>
-                            <button onclick="Table.lastPage()" class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 transition-colors shadow-sm font-bold text-sm" id="lastBtnMobile">
-                                <i class="fas fa-angle-double-right text-blue-600"></i>
-                            </button>
-                        </div>
-                    </div>
+                if (!data.values || data.values.length === 0) {
+                    throw new Error('No data found in the sheet');
+                }
+                
+                // Convert sheet data to objects
+                const headers = data.values[0];
+                const rows = data.values.slice(1);
+                
+                // Update sheet configuration based on actual headers
+                updateSheetConfig(currentSheet, headers);
+                
+                allData = rows.map(row => {
+                    const obj = {};
+                    headers.forEach((header, index) => {
+                        obj[header] = row[index] || '';
+                    });
+                    return obj;
+                }).filter(item => {
+                    // Filter out empty rows
+                    return Object.values(item).some(value => value && value.toString().trim() !== '');
+                });
+                
+                console.log(`Loaded ${allData.length} records from ${currentSheet} sheet`);
+                console.log('Sheet headers:', headers);
+                updateConnectionStatus('connected', `Terhubung - ${allData.length} records`);
+                
+                filteredData = [...allData];
+                updateFilters();
+                updateKPIs();
+                updateTableHeaders();
+                updateTable();
+                updateLastUpdate();
+                
+            } catch (error) {
+                console.error('Error loading data from Google Sheets:', error);
+                
+                // Show user-friendly error message
+                let errorMessage = 'Gagal memuat data dari Google Sheets. ';
+                
+                if (error.message.includes('403')) {
+                    errorMessage += 'Periksa API key atau izin akses sheet.';
+                } else if (error.message.includes('404')) {
+                    errorMessage += 'Sheet tidak ditemukan. Periksa ID spreadsheet.';
+                } else if (error.message.includes('No data found')) {
+                    errorMessage += 'Sheet kosong atau tidak ada data.';
+                } else {
+                    errorMessage += 'Silakan coba lagi atau periksa koneksi internet.';
+                }
+                
+                alert(errorMessage);
+                updateConnectionStatus('error', 'Gagal terhubung - menggunakan data sample');
+                
+                // Load sample data as fallback
+                loadSampleData();
+                
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function loadSampleData() {
+            console.log(`Loading sample data for ${currentSheet}...`);
+            
+            // Create sample headers and data
+            let sampleHeaders = [];
+            let sampleData = [];
+            
+            if (currentSheet === 'KONVEN') {
+                sampleHeaders = ['BRAND SIZE', 'BRAND', 'ORDER', 'ASSORTMENT', 'ETD', 'SHIPMENT PLAN', 'STOCK', 'LAMA', 'PR', 'POLOS', 'KARANTINA', 'CK', 'CB', 'ESTIMASI', 'TOTAL'];
+                sampleData = [
+                    {
+                        'BRAND SIZE': 'POLO-M',
+                        'BRAND': 'POLO RALPH LAUREN',
+                        'ORDER': '2500',
+                        'ASSORTMENT': 'BASIC POLO',
+                        'ETD': '2024-03-15',
+                        'SHIPMENT PLAN': '2024-03-20',
+                        'STOCK': '2300',
+                        'LAMA': '200',
+                        'PR': '2200',
+                        'POLOS': '100',
+                        'KARANTINA': '50',
+                        'CK': '25',
+                        'CB': '25',
+                        'ESTIMASI': '2400',
+                        'TOTAL': '2400'
+                    },
+                    {
+                        'BRAND SIZE': 'TOMMY-L',
+                        'BRAND': 'TOMMY HILFIGER',
+                        'ORDER': '3000',
+                        'ASSORTMENT': 'PREMIUM TEE',
+                        'ETD': '2024-03-18',
+                        'SHIPMENT PLAN': '2024-03-25',
+                        'STOCK': '2950',
+                        'LAMA': '150',
+                        'PR': '2800',
+                        'POLOS': '0',
+                        'KARANTINA': '0',
+                        'CK': '0',
+                        'CB': '0',
+                        'ESTIMASI': '3000',
+                        'TOTAL': '3000'
+                    }
+                ];
+            } else if (currentSheet === 'NOBASHI') {
+                sampleHeaders = ['BRAND SIZE', 'BRAND', 'ORDER', 'ASSORTMENT', 'ETD', 'SHIPMENT PLAN', 'STOCK', 'LAMA', 'PR', 'POLOS', 'KARANTINA', 'CK', 'CB', 'ESTIMASI', 'TOTAL', 'KEKURANGAN MC'];
+                sampleData = [
+                    {
+                        'BRAND SIZE': 'CK-S',
+                        'BRAND': 'CALVIN KLEIN',
+                        'ORDER': '1800',
+                        'ASSORTMENT': 'CASUAL WEAR',
+                        'ETD': '2024-03-22',
+                        'SHIPMENT PLAN': '2024-03-28',
+                        'STOCK': '1700',
+                        'LAMA': '100',
+                        'PR': '1600',
+                        'POLOS': '50',
+                        'KARANTINA': '25',
+                        'CK': '15',
+                        'CB': '10',
+                        'ESTIMASI': '1750',
+                        'TOTAL': '1750',
+                        'KEKURANGAN MC': '50'
+                    }
+                ];
+            } else if (currentSheet === 'SUSHI EBI') {
+                sampleHeaders = ['BRAND SIZE', 'BRAND', 'ORDER', 'ASSORTMENT', 'ETD', 'SHIPMENT PLAN', 'STOCK', 'LAMA', 'PR', 'POLOS', 'KARANTINA', 'ESTIMASI', 'TOTAL', 'KEKURANGAN MC'];
+                sampleData = [
+                    {
+                        'BRAND SIZE': 'LACOSTE-XL',
+                        'BRAND': 'LACOSTE',
+                        'ORDER': '2200',
+                        'ASSORTMENT': 'SPORT POLO',
+                        'ETD': '2024-03-25',
+                        'SHIPMENT PLAN': '2024-03-30',
+                        'STOCK': '2150',
+                        'LAMA': '50',
+                        'PR': '2000',
+                        'POLOS': '0',
+                        'KARANTINA': '0',
+                        'ESTIMASI': '2200',
+                        'TOTAL': '2200',
+                        'KEKURANGAN MC': '0'
+                    }
+                ];
+            }
+            
+            // Update sheet configuration with sample headers
+            updateSheetConfig(currentSheet, sampleHeaders);
+            
+            allData = sampleData;
+            filteredData = [...allData];
+            updateFilters();
+            updateKPIs();
+            updateTableHeaders();
+            updateTable();
+            updateLastUpdate();
+        }
+
+        function updateFilters() {
+            const brandFilter = document.getElementById('brandFilter');
+            
+            // Store current selection
+            const currentBrand = brandFilter.value;
+            
+            // Get unique brands from current data
+            const brands = [...new Set(allData.map(item => item.BRAND).filter(brand => brand && brand.toString().trim() !== ''))].sort();
+            
+            console.log('Available brands:', brands);
+            
+            // Update brand filter
+            brandFilter.innerHTML = '<option value="">Semua Brand</option>';
+            brands.forEach(brand => {
+                const selected = brand === currentBrand ? 'selected' : '';
+                brandFilter.innerHTML += `<option value="${brand}" ${selected}>${brand}</option>`;
+            });
+            
+            // Update filter info
+            updateFilterInfo();
+        }
+
+        function applyFilters() {
+            const brandFilter = document.getElementById('brandFilter').value;
+            const globalSearch = document.getElementById('globalSearch').value.toLowerCase();
+            
+            console.log('Applying filters:', { brandFilter, globalSearch });
+            
+            filteredData = allData.filter(item => {
+                // Brand filter
+                const matchesBrand = !brandFilter || (item.BRAND && item.BRAND.toString().trim() === brandFilter);
+                
+                // Global search - search across all fields
+                const matchesSearch = !globalSearch || Object.values(item).some(value => {
+                    if (value === null || value === undefined) return false;
+                    return value.toString().toLowerCase().includes(globalSearch);
+                });
+                
+                return matchesBrand && matchesSearch;
+            });
+            
+            console.log(`Filtered ${filteredData.length} items from ${allData.length} total`);
+            
+            updateKPIs();
+            updateTable();
+            
+            // Update filter info
+            updateFilterInfo();
+        }
+        
+        function updateFilterInfo() {
+            const filterInfo = document.getElementById('filterInfo');
+            if (filterInfo) {
+                const totalItems = allData.length;
+                const filteredItems = filteredData.length;
+                
+                if (filteredItems === totalItems) {
+                    filterInfo.textContent = `Menampilkan semua ${totalItems} item`;
+                } else {
+                    filterInfo.textContent = `Menampilkan ${filteredItems} dari ${totalItems} item`;
+                }
+            }
+        }
+        
+        function clearAllFilters() {
+            // Reset all filter inputs
+            document.getElementById('brandFilter').value = '';
+            document.getElementById('globalSearch').value = '';
+            
+            // Reset filtered data to show all data
+            filteredData = [...allData];
+            
+            // Update displays
+            updateKPIs();
+            updateTable();
+            updateFilterInfo();
+            
+            console.log('All filters cleared');
+        }
+
+        function updateKPIs() {
+            // Calculate totals from filtered data
+            const totalOrder = filteredData.reduce((sum, item) => {
+                const orderValue = parseFloat(item.ORDER) || 0;
+                return sum + orderValue;
+            }, 0);
+            
+            const totalStock = filteredData.reduce((sum, item) => {
+                const stockValue = parseFloat(item.STOCK) || 0;
+                return sum + stockValue;
+            }, 0);
+            
+            const totalKarantina = filteredData.reduce((sum, item) => {
+                const karantinaValue = parseFloat(item.KARANTINA) || 0;
+                return sum + karantinaValue;
+            }, 0);
+            
+            // Animate numbers
+            animateNumber('totalOrder', totalOrder);
+            animateNumber('totalStock', totalStock);
+            animateNumber('totalKarantina', totalKarantina);
+            
+            // Update kekurangan if applicable
+            if (SHEET_CONFIGS[currentSheet].hasKekurangan) {
+                const totalKekurangan = filteredData.reduce((sum, item) => {
+                    const kekuranganValue = parseFloat(item['KEKURANGAN MC']) || 0;
+                    return sum + kekuranganValue;
+                }, 0);
+                animateNumber('totalKekurangan', totalKekurangan);
+            }
+            
+            console.log('KPI Updated:', { 
+                totalOrder, 
+                totalStock, 
+                totalKarantina,
+                dataCount: filteredData.length 
+            });
+        }
+        
+        function animateNumber(elementId, targetValue) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            const startValue = 0;
+            const duration = 1000; // 1 second
+            const startTime = performance.now();
+            
+            function updateNumber(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                const currentValue = Math.floor(startValue + (targetValue - startValue) * progress);
+                element.textContent = currentValue.toLocaleString('id-ID');
+                
+                if (progress < 1) {
+                    requestAnimationFrame(updateNumber);
+                }
+            }
+            
+            requestAnimationFrame(updateNumber);
+        }
+
+        function updateTableHeaders() {
+            const config = SHEET_CONFIGS[currentSheet];
+            const tableHeaders = document.getElementById('tableHeaders');
+            
+            if (!tableHeaders) return;
+            
+            // Clear existing headers
+            tableHeaders.innerHTML = '';
+            
+            // Add headers based on current sheet configuration
+            config.columns.forEach(column => {
+                const th = document.createElement('th');
+                th.textContent = column;
+                th.style.whiteSpace = 'nowrap';
+                tableHeaders.appendChild(th);
+            });
+            
+            // Add action column
+            const actionTh = document.createElement('th');
+            actionTh.textContent = 'Aksi';
+            actionTh.style.width = '80px';
+            tableHeaders.appendChild(actionTh);
+        }
+
+        function updateTable() {
+            // Check if we're on mobile
+            const isMobile = window.innerWidth < 768;
+            
+            if (isMobile) {
+                updateMobileView();
+                document.getElementById('dataTable').parentElement.style.display = 'none';
+                document.getElementById('mobileView').style.display = 'block';
+            } else {
+                updateDesktopTable();
+                document.getElementById('dataTable').parentElement.style.display = 'block';
+                document.getElementById('mobileView').style.display = 'none';
+            }
+        }
+
+        function updateDesktopTable() {
+            // Destroy existing DataTable if it exists
+            if (dataTable) {
+                dataTable.destroy();
+                dataTable = null;
+            }
+            
+            const config = SHEET_CONFIGS[currentSheet];
+            const tableBody = document.querySelector('#dataTable tbody');
+            
+            if (!tableBody) return;
+            
+            // Clear existing rows
+            tableBody.innerHTML = '';
+            
+            // Add rows
+            filteredData.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition-colors';
+                
+                // Add data cells
+                config.columns.forEach(column => {
+                    const cell = document.createElement('td');
+                    cell.className = 'px-4 py-3 text-sm';
                     
-                    <!-- Desktop Pagination -->
-                    <div class="hidden md:flex items-center justify-between">
-                        <div class="flex items-center space-x-4">
-                            <div class="text-sm text-gray-700 font-bold">
-                                Showing <span id="showingStart" class="font-black text-blue-600">0</span> - <span id="showingEnd" class="font-black text-blue-600">0</span> of <span id="totalRecords" class="font-black text-blue-600">0</span>
-                            </div>
-                            <select id="itemsPerPage" onchange="Table.changeItemsPerPage()" class="form-advanced text-sm py-2 px-3">
-                                <option value="10">10 per page</option>
-                                <option value="25">25 per page</option>
-                                <option value="50">50 per page</option>
-                                <option value="100">100 per page</option>
-                            </select>
-                        </div>
-                        <div class="flex items-center space-x-3">
-                            <button onclick="Table.firstPage()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 transition-colors shadow-sm font-bold" id="firstBtn">
-                                <i class="fas fa-angle-double-left text-blue-600"></i>
-                            </button>
-                            <button onclick="Table.previousPage()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 transition-colors shadow-sm font-bold" id="prevBtn">
-                                <i class="fas fa-angle-left text-blue-600"></i>
-                            </button>
-                            <span id="pageInfo" class="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-black shadow-lg">1</span>
-                            <button onclick="Table.nextPage()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 transition-colors shadow-sm font-bold" id="nextBtn">
-                                <i class="fas fa-angle-right text-blue-600"></i>
-                            </button>
-                            <button onclick="Table.lastPage()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 transition-colors shadow-sm font-bold" id="lastBtn">
-                                <i class="fas fa-angle-double-right text-blue-600"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Analytics Section -->
-        <div id="analytics-section" class="section hidden">
-            <div class="mb-10">
-                <h2 class="text-5xl font-black bg-gradient-to-r from-green-600 to-green-600 bg-clip-text text-transparent mb-3">Advanced Analytics</h2>
-                <p class="text-gray-600 text-xl font-semibold">Data Visualization & Insights</p>
-            </div>
-            
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-                <div class="advanced-card p-8">
-                    <h3 class="text-xl font-black text-gray-800 mb-6">Brand Distribution</h3>
-                    <div class="h-80">
-                        <canvas id="brandChart"></canvas>
-                    </div>
-                </div>
-                
-                <div class="advanced-card p-8">
-                    <h3 class="text-xl font-black text-gray-800 mb-6">Stock Trend</h3>
-                    <div class="h-80">
-                        <canvas id="trendChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- PO Summary Section -->
-        <div id="rekap-po-section" class="section hidden">
-            <div class="mb-10">
-                <h2 class="text-5xl font-black bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent mb-3">📁 PO Summary</h2>
-                <p class="text-gray-600 text-xl font-semibold">Purchase Order Analysis</p>
-            </div>
-            
-            <!-- PO Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
-                <div class="stat-card animate-slideInUp">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-blue-600 mb-2" id="totalPOs">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Total PO</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-file-invoice text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.1s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-green-600 mb-2" id="activePOs">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Active PO</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-check-circle text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.2s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-purple-600 mb-2" id="poTotalMC">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Total MC</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-boxes text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.3s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-orange-600 mb-2" id="poTotalKg">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Total Weight</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-weight text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- PO Table -->
-            <div class="advanced-table animate-slideInUp">
-                <div class="table-header px-8 py-6">
-                    <h3 class="text-xl font-black">Purchase Order Details</h3>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gradient-to-r from-gray-50 to-blue-50">
-                            <tr>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider">PO Number</th>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider">Date</th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider">Items</th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider">Total MC</th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider">Total Weight</th>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="poTableBody" class="divide-y divide-gray-100">
-                            <!-- Data populated by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Brand Analysis Section -->
-        <div id="rekap-brand-section" class="section hidden">
-            <div class="mb-10">
-                <h2 class="text-5xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-3">🏷️ Brand Analysis</h2>
-                <p class="text-gray-600 text-xl font-semibold">Brand Performance & Distribution Analysis</p>
-            </div>
-            
-            <!-- Brand Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
-                <div class="stat-card animate-slideInUp">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-purple-600 mb-2" id="totalBrands">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Total Brands</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-tags text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.1s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-pink-600 mb-2" id="topBrand">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Top Brand</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-crown text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.2s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-indigo-600 mb-2" id="brandTotalMC">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Avg MC/Brand</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-chart-pie text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.3s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-teal-600 mb-2" id="brandTotalKg">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Avg Kg/Brand</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-balance-scale text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Brand Chart and Table -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-                <div class="advanced-card p-8">
-                    <h3 class="text-xl font-black text-gray-800 mb-6">Brand Distribution</h3>
-                    <div class="h-80">
-                        <canvas id="brandDistributionChart"></canvas>
-                    </div>
-                </div>
-                
-                <div class="advanced-card p-8">
-                    <h3 class="text-xl font-black text-gray-800 mb-6">Top Brands by Weight</h3>
-                    <div class="space-y-4" id="topBrandsList">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Brand Table -->
-            <div class="advanced-table animate-slideInUp">
-                <div class="table-header px-8 py-6">
-                    <h3 class="text-xl font-black">Brand Performance Details</h3>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gradient-to-r from-gray-50 to-purple-50">
-                            <tr>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider">Brand Name</th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider">Products</th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider">Total MC</th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider">Total Weight</th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider">Market Share</th>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider">Performance</th>
-                            </tr>
-                        </thead>
-                        <tbody id="brandTableBody" class="divide-y divide-gray-100">
-                            <!-- Data populated by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Location Tracking Section -->
-        <div id="rekap-lokasi-section" class="section hidden">
-            <div class="mb-10">
-                <h2 class="text-5xl font-black bg-gradient-to-r from-blue-600 to-blue-600 bg-clip-text text-transparent mb-3">📍 Location Tracking</h2>
-                <p class="text-gray-600 text-xl font-semibold">Cold Storage Distribution & Location Analysis</p>
-            </div>
-            
-            <!-- Location Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
-                <div class="stat-card animate-slideInUp">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-green-600 mb-2" id="totalLocations">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Locations</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-map-marker-alt text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.1s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-teal-600 mb-2" id="busyLocation">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Busiest</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-warehouse text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.2s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-blue-600 mb-2" id="locationTotalMC">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Avg MC/Location</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-boxes text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.3s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-purple-600 mb-2" id="locationTotalKg">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Avg Kg/Location</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-weight text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Location Chart and Capacity -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-                <div class="advanced-card p-8">
-                    <h3 class="text-xl font-black text-gray-800 mb-6">Location Distribution</h3>
-                    <div class="h-80">
-                        <canvas id="locationChart"></canvas>
-                    </div>
-                </div>
-                
-                <div class="advanced-card p-8">
-                    <h3 class="text-xl font-black text-gray-800 mb-6">Cold Storage Capacity</h3>
-                    <div class="space-y-6" id="warehouseCapacity">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Location Table -->
-            <div class="advanced-table animate-slideInUp">
-                <div class="table-header px-8 py-6">
-                    <h3 class="text-xl font-black">Location Details</h3>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gradient-to-r from-gray-50 to-green-50">
-                            <tr>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider">Location</th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider">Products</th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider">Total MC</th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider">Total Weight</th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider">Utilization</th>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="locationTableBody" class="divide-y divide-gray-100">
-                            <!-- Data populated by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Code Breakdown Section -->
-        <div id="code-breakdown-section" class="section hidden">
-            <div class="mb-10">
-                <h2 class="text-6xl font-black bg-gradient-to-r from-indigo-600 to-cyan-600 bg-clip-text text-transparent mb-3">🔍 Code Breakdown</h2>
-                <p class="text-gray-600 text-xl font-semibold">Product Breakdown code</p>
-            </div>
-            
-            <!-- Code Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
-                <div class="stat-card animate-slideInUp">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-indigo-600 mb-2" id="totalCodes">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Total Brands</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-tags text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.1s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-cyan-600 mb-2" id="uniqueCodeBrands">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Unique Products</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-cube text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.2s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-purple-600 mb-2" id="codeTotalMC">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Total MC</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-boxes text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card animate-slideInUp" style="animation-delay: 0.3s">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-4xl font-black text-emerald-600 mb-2" id="codeTotalKg">-</div>
-                            <div class="text-sm text-gray-600 font-bold uppercase tracking-wide">Total Weight</div>
-                        </div>
-                        <div class="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-weight text-white text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Code Search and Filter -->
-            <div class="advanced-card p-8 mb-10 animate-slideInUp" style="animation-delay: 0.4s">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-2xl font-black text-gray-800">Code Search</h3>
-                    <div class="flex items-center space-x-2">
-                        <div class="w-3 h-3 bg-indigo-500 rounded-full animate-pulse"></div>
-                        <span class="text-sm font-semibold text-gray-600">Analysis</span>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-3">Search by Brand</label>
-                        <input type="text" id="codeSearch" placeholder="Search brands, products, codes..." 
-                               class="form-advanced w-full" onkeyup="CodeBreakdown.searchCodes()">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-3">Filter by Brand</label>
-                        <select id="codeFilterBrand" class="form-advanced w-full" onchange="CodeBreakdown.filterCodes()">
-                            <option value="">All Brands</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-3">Filter PO</label>
-                        <select id="codeFilterPO" class="form-advanced w-full" onchange="CodeBreakdown.filterCodes()">
-                            <option value="">All PO Numbers</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="flex flex-wrap gap-4">
-                    <button onclick="CodeBreakdown.resetFilters()" class="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-xl hover:shadow-2xl">
-                        <i class="fas fa-undo mr-2"></i>Reset Filters
-                    </button>
-                    <button onclick="CodeBreakdown.exportToPDF()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-xl hover:shadow-2xl">
-                        <i class="fas fa-file-pdf mr-2"></i>Export PDF
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Code Breakdown Table -->
-            <div class="advanced-table animate-slideInUp" style="animation-delay: 0.5s">
-                <div class="table-header px-4 md:px-8 py-6">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg md:text-xl font-black">Product Code Details</h3>
-                        <div class="hidden md:flex items-center space-x-4">
-                            <span class="text-sm font-semibold opacity-90">Brand : Product : Packaging : Code</span>
-                            <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Desktop Table -->
-                <div class="desktop-table overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gradient-to-r from-gray-50 to-indigo-50">
-                            <tr>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100 transition-colors" onclick="CodeBreakdown.sortTable('brand')">
-                                    Brand Name <i class="fas fa-sort ml-2 text-indigo-500"></i>
-                                </th>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100 transition-colors" onclick="CodeBreakdown.sortTable('po')">
-                                    PO Number <i class="fas fa-sort ml-2 text-indigo-500"></i>
-                                </th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100 transition-colors" onclick="CodeBreakdown.sortTable('products')">
-                                    Products <i class="fas fa-sort ml-2 text-indigo-500"></i>
-                                </th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100 transition-colors" onclick="CodeBreakdown.sortTable('mc')">
-                                    Total MC <i class="fas fa-sort ml-2 text-indigo-500"></i>
-                                </th>
-                                <th class="px-8 py-6 text-right text-xs font-black text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100 transition-colors" onclick="CodeBreakdown.sortTable('kg')">
-                                    Total Weight <i class="fas fa-sort ml-2 text-indigo-500"></i>
-                                </th>
-                                <th class="px-8 py-6 text-left text-xs font-black text-gray-700 uppercase tracking-wider">
-                                    Product Details
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="codeTableBody" class="divide-y divide-gray-100">
-                            <!-- Data populated by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-                
-                <!-- Mobile Code Breakdown -->
-                <div class="mobile-table p-4" id="mobileCodeTable">
-                    <!-- Mobile code cards populated by JavaScript -->
-                </div>
-                
-                <!-- Code Pagination -->
-                <div class="bg-gradient-to-r from-gray-50 to-indigo-50 px-8 py-6 flex items-center justify-between border-t border-gray-200">
-                    <div class="flex items-center space-x-4">
-                        <div class="text-sm text-gray-700 font-bold">
-                            Showing <span id="codeShowingStart" class="font-black text-indigo-600">0</span> - <span id="codeShowingEnd" class="font-black text-indigo-600">0</span> of <span id="codeTotalRecords" class="font-black text-indigo-600">0</span>
-                        </div>
-                        <select id="codeItemsPerPage" onchange="CodeBreakdown.changeItemsPerPage()" class="form-advanced text-sm py-2 px-3">
-                            <option value="10">10 per page</option>
-                            <option value="25">25 per page</option>
-                            <option value="50">50 per page</option>
-                            <option value="100">100 per page</option>
-                        </select>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <button onclick="CodeBreakdown.firstPage()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-indigo-50 transition-colors shadow-sm font-bold" id="codeFirstBtn">
-                            <i class="fas fa-angle-double-left text-indigo-600"></i>
-                        </button>
-                        <button onclick="CodeBreakdown.previousPage()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-indigo-50 transition-colors shadow-sm font-bold" id="codePrevBtn">
-                            <i class="fas fa-angle-left text-indigo-600"></i>
-                        </button>
-                        <span id="codePageInfo" class="px-6 py-2 bg-gradient-to-r from-indigo-500 to-cyan-600 text-white rounded-lg font-black shadow-lg">1</span>
-                        <button onclick="CodeBreakdown.nextPage()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-indigo-50 transition-colors shadow-sm font-bold" id="codeNextBtn">
-                            <i class="fas fa-angle-right text-indigo-600"></i>
-                        </button>
-                        <button onclick="CodeBreakdown.lastPage()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-indigo-50 transition-colors shadow-sm font-bold" id="codeLastBtn">
-                            <i class="fas fa-angle-double-right text-indigo-600"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Data Entry Summary Section -->
-        <div id="data-entry-summary-section" class="section hidden">
-            <div class="mb-10">
-                <h2 class="text-5xl font-black bg-gradient-to-r from-pink-600 to-blue-600 bg-clip-text text-transparent mb-3"> Data Entry Summary</h2>
-                <p class="text-gray-600 text-xl font-semibold">Daily Breakdown & Analysis</p>
-            </div>
-            
-            <!-- Date Entry Summary -->
-            <div class="advanced-card p-8 mb-10 animate-slideInUp" style="animation-delay: 0.1s">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-2xl font-black text-gray-800">📅 Entry by Date</h3>
-                    <div class="flex items-center space-x-2">
-                        <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                        <span class="text-sm font-semibold text-gray-600">Daily Breakdown</span>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <!-- Date Summary Chart -->
-                    <div class="h-80">
-                        <canvas id="dateSummaryChart"></canvas>
-                    </div>
+                    const value = item[column] || '';
+                    cell.textContent = formatDisplayValue(column, value);
                     
-                    <!-- Date Summary Table -->
-                    <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-6 max-h-80 overflow-y-auto">
-                        <h4 class="text-lg font-black text-gray-800 mb-4">Daily Statistics</h4>
-                        <div id="dateSummaryList" class="space-y-3">
-                            <!-- Populated by JavaScript -->
-                        </div>
+                    // Add special styling for certain columns
+                    if (column === 'KARANTINA' && parseFloat(value) > 0) {
+                        cell.className += ' text-yellow-600 font-semibold';
+                    } else if (column === 'KEKURANGAN MC' && parseFloat(value) > 0) {
+                        cell.className += ' text-red-600 font-semibold';
+                    }
+                    
+                    row.appendChild(cell);
+                });
+                
+                // Add action cell
+                const actionCell = document.createElement('td');
+                actionCell.className = 'px-4 py-3 text-sm';
+                actionCell.innerHTML = `
+                    <button onclick="showItemDetail(${index})" class="text-blue-600 hover:text-blue-800 font-medium">
+                        Detail
+                    </button>
+                `;
+                row.appendChild(actionCell);
+                
+                tableBody.appendChild(row);
+            });
+            
+            // Initialize DataTable
+            try {
+                dataTable = $('#dataTable').DataTable({
+                    responsive: false,
+                    pageLength: 25,
+                    lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Semua"]],
+                    language: {
+                        url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
+                    },
+                    dom: '<"flex flex-col md:flex-row md:items-center justify-between mb-4"<"mb-2 md:mb-0"l><"mb-2 md:mb-0"f>>rtip',
+                    columnDefs: [
+                        { targets: -1, orderable: false, searchable: false } // Action column
+                    ],
+                    drawCallback: function() {
+                        // Add custom styling after table is drawn
+                        $('#dataTable_wrapper .dataTables_length select').addClass('form-select text-sm');
+                        $('#dataTable_wrapper .dataTables_filter input').addClass('form-input text-sm ml-2');
+                    }
+                });
+            } catch (error) {
+                console.error('Error initializing DataTable:', error);
+            }
+        }
+
+        function updateMobileView() {
+            const config = SHEET_CONFIGS[currentSheet];
+            const mobileCards = document.getElementById('mobileCards');
+            
+            if (!mobileCards) return;
+            
+            // Clear existing cards
+            mobileCards.innerHTML = '';
+            
+            filteredData.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'data-card';
+                
+                // Determine card status based on data
+                let cardStatus = '';
+                const karantina = parseFloat(item.KARANTINA) || 0;
+                const kekurangan = parseFloat(item['KEKURANGAN MC']) || 0;
+                
+                if (kekurangan > 0) {
+                    cardStatus = 'status-error';
+                } else if (karantina > 0) {
+                    cardStatus = 'status-warning';
+                } else {
+                    cardStatus = 'status-success';
+                }
+                
+                card.classList.add(cardStatus);
+                
+                // Card header
+                const header = document.createElement('div');
+                header.className = 'data-card-header';
+                header.innerHTML = `
+                    <h4 class="data-card-title">${item['BRAND SIZE'] || 'Unknown'}</h4>
+                    <p class="data-card-subtitle">${item.BRAND || 'Unknown Brand'}</p>
+                `;
+                card.appendChild(header);
+                
+                // Card body
+                const body = document.createElement('div');
+                body.className = 'data-card-body';
+                
+                // Add mobile fields
+                config.mobileFields.forEach(field => {
+                    if (field === 'BRAND SIZE' || field === 'BRAND') return; // Already in header
+                    
+                    const fieldDiv = document.createElement('div');
+                    fieldDiv.className = 'data-field';
+                    
+                    const value = item[field] || '';
+                    fieldDiv.innerHTML = `
+                        <span class="data-label">${field}</span>
+                        <span class="data-value">${formatDisplayValue(field, value)}</span>
+                    `;
+                    
+                    body.appendChild(fieldDiv);
+                });
+                
+                // Add detail button
+                const detailDiv = document.createElement('div');
+                detailDiv.className = 'mt-4 pt-4 border-t border-gray-100';
+                detailDiv.innerHTML = `
+                    <button onclick="showItemDetail(${index})" class="btn btn-primary w-full text-sm">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Lihat Detail
+                    </button>
+                `;
+                body.appendChild(detailDiv);
+                
+                card.appendChild(body);
+                mobileCards.appendChild(card);
+            });
+        }
+
+        function showItemDetail(index) {
+            const item = filteredData[index];
+            const config = SHEET_CONFIGS[currentSheet];
+            const modal = document.getElementById('detailModal');
+            const modalContent = document.getElementById('modalContent');
+            
+            if (!item || !modal || !modalContent) return;
+            
+            // Build modal content
+            let content = `
+                <div class="space-y-4">
+                    <div class="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-200">
+                        <h3 class="text-lg font-bold text-gray-900 mb-1">${item['BRAND SIZE'] || 'Unknown'}</h3>
+                        <p class="text-sm text-gray-600">${item.BRAND || 'Unknown Brand'}</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            `;
+            
+            // Add all fields
+            config.columns.forEach(column => {
+                if (column === 'BRAND SIZE' || column === 'BRAND') return; // Already in header
+                
+                const value = item[column] || '';
+                const displayValue = formatDisplayValue(column, value);
+                
+                let fieldClass = 'bg-gray-50 p-3 rounded-lg';
+                if (column === 'KARANTINA' && parseFloat(value) > 0) {
+                    fieldClass = 'bg-yellow-50 p-3 rounded-lg border border-yellow-200';
+                } else if (column === 'KEKURANGAN MC' && parseFloat(value) > 0) {
+                    fieldClass = 'bg-red-50 p-3 rounded-lg border border-red-200';
+                }
+                
+                content += `
+                    <div class="${fieldClass}">
+                        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">${column}</label>
+                        <div class="text-sm font-medium text-gray-900">${displayValue}</div>
+                    </div>
+                `;
+            });
+            
+            content += `
                     </div>
                 </div>
-            </div>
-        </div>
+            `;
+            
+            modalContent.innerHTML = content;
+            modal.style.display = 'block';
+        }
+        
+        function formatDisplayValue(key, value) {
+            if (!value || value === '') return '-';
+            
+            // Format numeric fields
+            const numericFields = ['ORDER', 'STOCK', 'LAMA', 'PR', 'POLOS', 'KARANTINA', 'CK', 'CB', 'ESTIMASI', 'TOTAL', 'KEKURANGAN MC'];
+            if (numericFields.includes(key)) {
+                const num = parseFloat(value);
+                return isNaN(num) ? '-' : num.toLocaleString('id-ID');
+            }
+            
+            return value;
+        }
+        
+        function formatNumber(value) {
+            if (!value || value === '') return '-';
+            
+            // Check if it's a numeric field that should be formatted
+            const num = parseFloat(value);
+            if (!isNaN(num)) {
+                return num.toLocaleString('id-ID');
+            }
+            
+            return value;
+        }
 
-       
+        function closeModal() {
+            document.getElementById('detailModal').style.display = 'none';
+        }
 
-    <script src="main.js"></script>              
-                 
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96921e4cb44db5ac',t:'MTc1NDE4NTM0Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+        function exportToExcel() {
+            if (!filteredData || filteredData.length === 0) {
+                alert('Tidak ada data untuk diekspor');
+                return;
+            }
+            
+            try {
+                const config = SHEET_CONFIGS[currentSheet];
+                
+                // Prepare data for export
+                const exportData = filteredData.map(item => {
+                    const exportItem = {};
+                    config.columns.forEach(column => {
+                        exportItem[column] = item[column] || '';
+                    });
+                    return exportItem;
+                });
+                
+                // Create workbook
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                
+                // Add worksheet to workbook
+                XLSX.utils.book_append_sheet(wb, ws, currentSheet);
+                
+                // Generate filename with current date
+                const now = new Date();
+                const dateStr = now.toISOString().split('T')[0];
+                const filename = `Monitoring_Stok_${currentSheet}_${dateStr}.xlsx`;
+                
+                // Save file
+                XLSX.writeFile(wb, filename);
+                
+                console.log(`Exported ${exportData.length} records to ${filename}`);
+                
+            } catch (error) {
+                console.error('Error exporting to Excel:', error);
+                alert('Gagal mengekspor data ke Excel. Silakan coba lagi.');
+            }
+        }
+
+        function showChartsPage() {
+            document.getElementById('chartsPage').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            
+            // Show/hide kekurangan chart based on current sheet
+            const kekuranganChartContainer = document.getElementById('kekuranganChartContainer');
+            if (SHEET_CONFIGS[currentSheet].hasKekurangan) {
+                kekuranganChartContainer.style.display = 'block';
+            } else {
+                kekuranganChartContainer.style.display = 'none';
+            }
+            
+            // Initialize charts when page is shown
+            setTimeout(() => {
+                updateAllCharts();
+            }, 200);
+        }
+
+        function showMainPage() {
+            document.getElementById('chartsPage').style.display = 'none';
+            document.body.style.overflow = 'auto';
+            
+            // Destroy charts to free memory
+            destroyAllCharts();
+        }
+
+        function destroyAllCharts() {
+            if (orderChart) { orderChart.destroy(); orderChart = null; }
+            if (assortmentChart) { assortmentChart.destroy(); assortmentChart = null; }
+            if (karantinaChart) { karantinaChart.destroy(); karantinaChart = null; }
+            if (kekuranganChart) { kekuranganChart.destroy(); kekuranganChart = null; }
+        }
+
+        function updateAllCharts() {
+            updateOrderChart();
+            updateAssortmentChart();
+            updateKarantinaChart();
+            if (SHEET_CONFIGS[currentSheet].hasKekurangan) {
+                updateKekuranganChart();
+            }
+        }
+
+        function updateOrderChart() {
+            const ctx = document.getElementById('orderChart');
+            if (!ctx) return;
+            
+            if (orderChart) {
+                orderChart.destroy();
+            }
+            
+            // Group data by brand
+            const brandData = {};
+            filteredData.forEach(item => {
+                const brand = item.BRAND || 'Unknown';
+                if (!brandData[brand]) {
+                    brandData[brand] = { order: 0, stock: 0 };
+                }
+                brandData[brand].order += parseFloat(item.ORDER) || 0;
+                brandData[brand].stock += parseFloat(item.STOCK) || 0;
+            });
+            
+            const labels = Object.keys(brandData);
+            const orderData = labels.map(brand => brandData[brand].order);
+            const stockData = labels.map(brand => brandData[brand].stock);
+            
+            orderChart = new Chart(ctx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Order',
+                        data: orderData,
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }, {
+                        label: 'Stock',
+                        data: stockData,
+                        backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateAssortmentChart() {
+            const ctx = document.getElementById('assortmentChart');
+            if (!ctx) return;
+            
+            if (assortmentChart) {
+                assortmentChart.destroy();
+            }
+            
+            // Group data by assortment
+            const assortmentData = {};
+            filteredData.forEach(item => {
+                const assortment = item.ASSORTMENT || 'Unknown';
+                assortmentData[assortment] = (assortmentData[assortment] || 0) + 1;
+            });
+            
+            const labels = Object.keys(assortmentData);
+            const data = Object.values(assortmentData);
+            const colors = [
+                '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+                '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6B7280'
+            ];
+            
+            assortmentChart = new Chart(ctx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 10
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                    return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateKarantinaChart() {
+            const ctx = document.getElementById('karantinaChart');
+            if (!ctx) return;
+            
+            if (karantinaChart) {
+                karantinaChart.destroy();
+            }
+            
+            // Group by brand and sum karantina
+            const brandKarantina = {};
+            filteredData.forEach(item => {
+                const brand = item.BRAND || 'Unknown';
+                const karantina = parseFloat(item.KARANTINA) || 0;
+                brandKarantina[brand] = (brandKarantina[brand] || 0) + karantina;
+            });
+            
+            const labels = Object.keys(brandKarantina);
+            const data = Object.values(brandKarantina);
+            
+            karantinaChart = new Chart(ctx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Karantina',
+                        data: data,
+                        borderColor: 'rgba(245, 158, 11, 1)',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: 'rgba(245, 158, 11, 1)',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        
+        async function updateLastUpdate() {
+            try {
+                // Get file metadata from Google Drive API
+                const driveUrl = `https://www.googleapis.com/drive/v3/files/${SPREADSHEET_ID}?fields=modifiedTime&key=${API_KEY}`;
+                const response = await fetch(driveUrl);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const modifiedTime = new Date(data.modifiedTime);
+                    const timeString = modifiedTime.toLocaleString('id-ID');
+                    document.getElementById('lastUpdate').textContent = `Data terakhir diubah: ${timeString}`;
+                } else {
+                    throw new Error('Failed to get file metadata');
+                }
+            } catch (error) {
+                console.error('Error getting file metadata:', error);
+                // Fallback to current time
+                const now = new Date();
+                const timeString = now.toLocaleString('id-ID');
+                document.getElementById('lastUpdate').textContent = `Data dimuat: ${timeString}`;
+            }
+        }
+
+        function updateConnectionStatus(status, message) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            switch(status) {
+                case 'connected':
+                    indicator.className = 'status-dot connected';
+                    statusText.className = 'text-sm text-white/90 hidden md:inline';
+                    break;
+                case 'error':
+                    indicator.className = 'status-dot error';
+                    statusText.className = 'text-sm text-white/90 hidden md:inline';
+                    break;
+                case 'loading':
+                    indicator.className = 'status-dot loading';
+                    statusText.className = 'text-sm text-white/90 hidden md:inline';
+                    break;
+                default:
+                    indicator.className = 'status-dot';
+                    statusText.className = 'text-sm text-white/90 hidden md:inline';
+            }
+            
+            statusText.textContent = message;
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98439f5c854751fc',t:'MTc1ODczMDk2Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
