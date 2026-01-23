@@ -1074,36 +1074,28 @@
             };
         }
 
-        function getFilteredData(filters) {
-            return allData.filter(item => {
-                const matchProduk = !filters.produk || 
-                    (typeof filters.produk === 'string' && filters.produk.length > 0 ? 
-                        item.produkId.toLowerCase().includes(filters.produk) : 
-                        item.produkId === filters.produk);
+        const normalize = val => val?.toString().trim().toLowerCase();
+
+function getFilteredData(filters) {
+    return allData.filter(item => {
+        const matchProduk = !filters.produk || 
+            normalize(item.produkId) === normalize(filters.produk);
                         
-                const matchPacking = !filters.packing || 
-                    (typeof filters.packing === 'string' && filters.packing.length > 0 ? 
-                        item.packing.toLowerCase().includes(filters.packing) : 
-                        item.packing === filters.packing);
+        const matchPacking = !filters.packing || 
+            normalize(item.packing) === normalize(filters.packing);
                         
-                const matchBrand = !filters.brand || 
-                    (typeof filters.brand === 'string' && filters.brand.length > 0 ? 
-                        item.brand.toLowerCase().includes(filters.brand) : 
-                        item.brand === filters.brand);
+        const matchBrand = !filters.brand || 
+            normalize(item.brand) === normalize(filters.brand);
                         
-                const matchPo = !filters.po || 
-                    (typeof filters.po === 'string' && filters.po.length > 0 ? 
-                        item.po.toLowerCase().includes(filters.po) : 
-                        item.po === filters.po);
+        const matchPo = !filters.po || 
+            normalize(item.po) === normalize(filters.po);
                         
-                const matchKode = !filters.kode || 
-                    (typeof filters.kode === 'string' && filters.kode.length > 0 ? 
-                        item.kode.toLowerCase().includes(filters.kode) : 
-                        item.kode === filters.kode);
+        const matchKode = !filters.kode || 
+            normalize(item.kode) === normalize(filters.kode);
                 
-                return matchProduk && matchPacking && matchBrand && matchPo && matchKode;
-            });
-        }
+        return matchProduk && matchPacking && matchBrand && matchPo && matchKode;
+    });
+}
 
         function updateAllDropdowns() {
             updateDropdown('produkDropdown', 'produk', 'Semua Produk');
